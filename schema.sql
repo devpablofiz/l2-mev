@@ -39,3 +39,20 @@ CREATE INDEX IF NOT EXISTS idx_transactions_to_address ON transactions(to_addres
 CREATE INDEX IF NOT EXISTS idx_logs_tx_hash ON transaction_logs(tx_hash);
 CREATE INDEX IF NOT EXISTS idx_logs_address ON transaction_logs(address);
 CREATE INDEX IF NOT EXISTS idx_logs_topic0 ON transaction_logs(topic0);
+
+-- Optimized index for MEV tagging
+CREATE INDEX IF NOT EXISTS idx_transactions_method_id ON transactions (SUBSTRING(input_data, 1, 10));
+
+-- Tagging Tables for MEV Analysis
+CREATE TABLE IF NOT EXISTS method_tags (
+    method_id TEXT PRIMARY KEY, -- First 10 chars of input_data
+    tag_name TEXT NOT NULL,
+    description TEXT
+);
+
+CREATE TABLE IF NOT EXISTS address_tags (
+    address TEXT PRIMARY KEY,
+    tag_name TEXT NOT NULL,
+    source_method_id TEXT REFERENCES method_tags(method_id),
+    description TEXT
+);

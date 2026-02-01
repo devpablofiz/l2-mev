@@ -8,7 +8,90 @@ SELECT
 FROM transactions
 GROUP BY from_address
 ORDER BY tx_count DESC
-LIMIT 10;
+LIMIT 50;
+
+-- Analyze most used calldata by the top transactioners
+-- Goal: Identify the most frequent payloads from high-volume senders for efficient tagging.
+WITH top_senders AS (
+    SELECT from_address, COUNT(*) as sender_tx_count
+    FROM transactions
+    GROUP BY from_address
+    ORDER BY sender_tx_count DESC
+    LIMIT 50
+),
+calldata_stats AS (
+    SELECT 
+        t.input_data,
+        SUBSTRING(t.input_data, 1, 10) as method_id,
+        COUNT(*) as usage_count,
+        COUNT(DISTINCT t.from_address) as unique_top_senders
+    FROM transactions t
+    JOIN top_senders ts ON t.from_address = ts.from_address
+    WHERE t.input_data <> '0x'
+    GROUP BY t.input_data, method_id
+)
+SELECT 
+    method_id,
+    input_data,
+    usage_count,
+    unique_top_senders,
+    ROUND(usage_count::NUMERIC / (SELECT SUM(sender_tx_count) FROM top_senders)::NUMERIC * 100, 2) as percent_of_top_sender_txs
+FROM calldata_stats
+ORDER BY usage_count DESC
+LIMIT 100;
+
+-- TAGGING WORKFLOW: Step 1 - Identify top untagged methods
+-- Use this to find which method IDs you should research and tag next.
+SELECT 
+    SUBSTRING(input_data, 1, 10) as method_id,
+    COUNT(*) as usage_count,
+    COUNT(DISTINCT from_address) as unique_senders,
+    MIN(tx_hash) as sample_tx_hash
+FROM transactions
+LEFT JOIN method_tags mt ON SUBSTRING(input_data, 1, 10) = mt.method_id
+WHERE mt.method_id IS NULL AND input_data <> '0x'
+GROUP BY SUBSTRING(input_data, 1, 10)
+ORDER BY usage_count DESC
+LIMIT 20;
+
+-- TAGGING WORKFLOW: Step 2 - Example of how to tag a method
+-- INSERT INTO method_tags (method_id, tag_name, description) 
+-- VALUES ('0x3593564c', 'Uniswap V3 Swap', 'Execution of a swap on Uniswap V3');
+
+-- TAGGING WORKFLOW: Step 3 - Identify and tag senders based on their top 20 transactions
+-- This query finds top senders who have used a tagged method at least once in their last 20 txs.
+WITH top_senders AS (
+    SELECT from_address
+    FROM transactions
+    GROUP BY from_address
+    ORDER BY COUNT(*) DESC
+    LIMIT 100
+),
+sender_recent_txs AS (
+    SELECT 
+        from_address,
+        input_data,
+        SUBSTRING(input_data, 1, 10) as method_id,
+        ROW_NUMBER() OVER (PARTITION BY from_address ORDER BY block_number DESC) as tx_rank
+    FROM transactions
+    WHERE from_address IN (SELECT from_address FROM top_senders)
+),
+potential_tags AS (
+    SELECT DISTINCT
+        srt.from_address,
+        mt.tag_name,
+        mt.method_id,
+        'Auto-tagged based on method usage in top 20 txs' as description
+    FROM sender_recent_txs srt
+    JOIN method_tags mt ON srt.method_id = mt.method_id
+    WHERE srt.tx_rank <= 20
+)
+SELECT * FROM potential_tags
+-- To actually tag them, you would use:
+-- INSERT INTO address_tags (address, tag_name, source_method_id, description)
+-- SELECT from_address, tag_name, method_id, description FROM potential_tags
+-- ON CONFLICT (address) DO NOTHING;
+;
 
 -- Senders with multiple transactions in the same block
 -- Arbitrage bots often send multiple transactions in a single block to compete for the same opportunity.
@@ -122,3 +205,14 @@ WHERE input_data <> '0x'
 GROUP BY from_address, method_id
 HAVING COUNT(*) > 50
 ORDER BY calls DESC;
+
+-- Percent of total transactions sent by each address
+-- This helps identify the most dominant entities on the network.
+SELECT 
+    from_address, 
+    COUNT(*) as tx_count,
+    ROUND(COUNT(*)::NUMERIC / (SELECT COUNT(*) FROM transactions)::NUMERIC * 100, 4) as percent_of_total
+FROM transactions
+GROUP BY from_address
+ORDER BY tx_count DESC
+LIMIT 50;
