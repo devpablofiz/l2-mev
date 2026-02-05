@@ -10,6 +10,41 @@ GROUP BY from_address
 ORDER BY tx_count DESC
 LIMIT 50;
 
+-- IMPOSTOR DETECTION: Find tagged methods that might be misidentified or shared
+-- This looks for methods that are called on many different contracts or have varying lengths,
+-- which suggests the selector might have multiple different underlying functions (collisions).
+SELECT 
+    mt.method_id,
+    mt.tag_name,
+    COUNT(DISTINCT t.to_address) as unique_contracts,
+    COUNT(DISTINCT LENGTH(t.input_data)) as unique_input_lengths,
+    COUNT(*) as total_calls,
+    MIN(LENGTH(t.input_data)) as min_len,
+    MAX(LENGTH(t.input_data)) as max_len,
+    -- A high diversity score suggests the tag might be too broad or a collision exists
+    CASE 
+        WHEN COUNT(DISTINCT t.to_address) > 10 THEN 'High Contract Diversity (Potential Generic Method)'
+        WHEN COUNT(DISTINCT LENGTH(t.input_data)) > 5 THEN 'High Length Variance (Check for Collisions)'
+        ELSE 'Consistent'
+    END as status_check
+FROM transactions t
+JOIN method_tags mt ON SUBSTRING(t.input_data, 1, 10) = mt.method_id
+GROUP BY mt.method_id, mt.tag_name
+ORDER BY unique_contracts DESC;
+
+-- Find specific "impostor" contracts for a specific tagged method
+-- Replace '0xa9059cbb' with the method ID you want to investigate. 
+-- This helps you see which contracts are using the same selector.
+SELECT 
+    to_address,
+    COUNT(*) as call_count,
+    MIN(input_data) as sample_data
+FROM transactions
+WHERE SUBSTRING(input_data, 1, 10) = '0xa9059cbb' 
+GROUP BY to_address
+ORDER BY call_count DESC
+LIMIT 20;
+
 -- Analyze most used calldata by the top transactioners
 -- Goal: Identify the most frequent payloads from high-volume senders for efficient tagging.
 WITH top_senders AS (

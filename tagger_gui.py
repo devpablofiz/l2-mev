@@ -1,6 +1,8 @@
 import streamlit as st
 import psycopg2
 import os
+import requests
+import json
 from dotenv import load_dotenv
 import pandas as pd
 from sqlalchemy import create_engine
@@ -10,7 +12,7 @@ import warnings
 load_dotenv()
 
 # Silence pandas DBAPI2 warning
-warnings.filterwarnings("ignore", category=UserWarning, module="pandas")
+warnings.filterwarnings("ignore", message=".*pandas only supports SQLAlchemy connectable.*")
 
 # DB Connection Details
 DB_HOST = os.getenv("DB_HOST", "localhost")
@@ -18,6 +20,31 @@ DB_PORT = os.getenv("DB_PORT", "5432")
 DB_NAME = os.getenv("DB_NAME", "l2_mev")
 DB_USER = os.getenv("DB_USER", "postgres")
 DB_PASSWORD = os.getenv("DB_PASSWORD")
+TENDERLY_RPC_URL = os.getenv("TENDERLY_RPC_URL")
+
+def trace_transaction_tenderly(tx_hash):
+    """Traces a transaction using Tenderly's trace_transaction RPC method."""
+    if not TENDERLY_RPC_URL:
+        return "Error: TENDERLY_RPC_URL not found in .env"
+    
+    payload = {
+        "jsonrpc": "2.0",
+        "id": 1,
+        "method": "tenderly_traceTransaction",
+        "params": ["0x"+tx_hash]
+    }
+    
+    try:
+        response = requests.post(TENDERLY_RPC_URL, json=payload)
+        response.raise_for_status()
+        data = response.json()
+        
+        if "error" in data:
+            return f"RPC Error: {data['error'].get('message', 'Unknown error')}"
+        
+        return data.get("result", {})
+    except Exception as e:
+        return f"Request Error: {str(e)}"
 
 def get_db_connection():
     return psycopg2.connect(
@@ -39,6 +66,7 @@ st.markdown("Analyze and tag the most used calldata methods to identify bots and
 
 # Default tags for quick selection
 DEFAULT_TAGS = [
+    "Uniswap V4 Swap",
     "Uniswap V3 Swap",
     "Uniswap V2 Swap",
     "ERC20 Transfer",
@@ -238,8 +266,9 @@ def fetch_mev_exposure():
 @st.cache_data(ttl=60)
 def fetch_stats():
     engine = get_sqlalchemy_engine()
-    df_methods = pd.read_sql("SELECT tag_name, COUNT(*) as count FROM method_tags GROUP BY tag_name", engine)
-    df_addresses = pd.read_sql("SELECT tag_name, COUNT(*) as count FROM address_tags GROUP BY tag_name", engine)
+    with engine.connect() as conn:
+        df_methods = pd.read_sql("SELECT tag_name, COUNT(*) as count FROM method_tags GROUP BY tag_name", conn)
+        df_addresses = pd.read_sql("SELECT tag_name, COUNT(*) as count FROM address_tags GROUP BY tag_name", conn)
     return df_methods, df_addresses
 
 # UI Layout
@@ -254,7 +283,22 @@ with col1:
     else:
         for method_id, count, senders, tx_hash, sample in untagged:
             with st.expander(f"Method: {method_id} ({count} txs, {senders} senders)"):
-                st.write(f"**Sample TX:** `{tx_hash}`")
+                url = "https://basescan.org/tx/0x"+tx_hash
+                st.write(f"**Sample TX:** [`{tx_hash}`](%s)" % url)
+                
+                trace_col1, trace_col2 = st.columns([1, 4])
+                with trace_col1:
+                    if st.button("🔍 Trace with Tenderly", key=f"trace_{tx_hash}"):
+                        with st.spinner("Fetching trace..."):
+                            trace_result = trace_transaction_tenderly(tx_hash)
+                            if isinstance(trace_result, str):
+                                st.error(trace_result)
+                            else:
+                                st.session_state[f"trace_data_{tx_hash}"] = trace_result
+                
+                if f"trace_data_{tx_hash}" in st.session_state:
+                    st.code(json.dumps(st.session_state[f"trace_data_{tx_hash}"], indent=2), language="json")
+
                 st.code(sample, language="text")
                 
                 with st.form(key=f"form_{method_id}"):
