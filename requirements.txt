@@ -5,3 +5,5 @@ web3
 eth-utils
 pandas
 sqlalchemy
+plotly
+altair

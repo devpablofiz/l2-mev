@@ -1,0 +1,18 @@
+﻿activity_type,tx_count,percent
+Untagged / Unknown,14102357,32.99
+Incentive Farming / Liquidity Manager,5273119,12.34
+MEV Bot: Arbitrage,4086639,9.56
+Liquidity Tick Maintainance?,3902098,9.13
+MEV Bot: Liquidation,2906941,6.8
+Eth Transfer,2754071,6.44
+Account Abstraction,2741963,6.41
+Gelato Keepalive,1430630,3.35
+ERC20 Transfer,1117729,2.61
+ERC20 Approval,919896,2.15
+MEV: Flash Loan / Protocol Fee Extraction,898212,2.1
+Uniswap V4 Swap,811436,1.9
+Spam / Junk,650190,1.52
+Multicall,578714,1.35
+Uniswap V2 Swap,253102,0.59
+L1 Block Proxy,180514,0.42
+Uniswap V3 Swap,135945,0.32

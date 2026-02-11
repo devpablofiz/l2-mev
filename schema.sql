@@ -15,33 +15,15 @@ CREATE TABLE IF NOT EXISTS transactions (
     max_fee_per_gas BIGINT,
     max_priority_fee_per_gas BIGINT,
     input_data TEXT,
+    method_id TEXT, -- First 10 chars of input_data for faster querying
     nonce BIGINT,
-    transaction_index INTEGER,
-    status INTEGER -- 1 for success, 0 for failure
-);
-
-CREATE TABLE IF NOT EXISTS transaction_logs (
-    log_id SERIAL PRIMARY KEY,
-    tx_hash TEXT REFERENCES transactions(tx_hash),
-    address TEXT NOT NULL,
-    topic0 TEXT,
-    topic1 TEXT,
-    topic2 TEXT,
-    topic3 TEXT,
-    data TEXT,
-    log_index INTEGER,
-    UNIQUE (tx_hash, log_index)
+    transaction_index INTEGER
 );
 
 CREATE INDEX IF NOT EXISTS idx_transactions_block_number ON transactions(block_number);
 CREATE INDEX IF NOT EXISTS idx_transactions_from_address ON transactions(from_address);
 CREATE INDEX IF NOT EXISTS idx_transactions_to_address ON transactions(to_address);
-CREATE INDEX IF NOT EXISTS idx_logs_tx_hash ON transaction_logs(tx_hash);
-CREATE INDEX IF NOT EXISTS idx_logs_address ON transaction_logs(address);
-CREATE INDEX IF NOT EXISTS idx_logs_topic0 ON transaction_logs(topic0);
-
--- Optimized index for MEV tagging
-CREATE INDEX IF NOT EXISTS idx_transactions_method_id ON transactions (SUBSTRING(input_data, 1, 10));
+CREATE INDEX IF NOT EXISTS idx_transactions_method_id ON transactions (method_id);
 
 -- Tagging Tables for MEV Analysis
 CREATE TABLE IF NOT EXISTS method_tags (

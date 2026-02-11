@@ -180,6 +180,9 @@ def fetch_and_store_block(w3, w3_receipts, conn, block_number):
                         log['logIndex']
                     ))
                 
+                input_data = tx['input'].hex() if isinstance(tx['input'], bytes) else tx['input']
+                method_id = input_data[:10] if input_data and len(input_data) >= 10 else input_data
+
                 tx_data.append((
                     tx_hash_hex,
                     block['number'],
@@ -190,7 +193,8 @@ def fetch_and_store_block(w3, w3_receipts, conn, block_number):
                     tx.get('gasPrice'),
                     tx.get('maxFeePerGas'),
                     tx.get('maxPriorityFeePerGas'),
-                    tx['input'].hex() if isinstance(tx['input'], bytes) else tx['input'],
+                    input_data,
+                    method_id,
                     tx['nonce'],
                     tx['transactionIndex'],
                     receipt['status']
@@ -199,7 +203,7 @@ def fetch_and_store_block(w3, w3_receipts, conn, block_number):
             if tx_data:
                 extras.execute_values(
                     cur,
-                    "INSERT INTO transactions (tx_hash, block_number, from_address, to_address, value, gas_limit, gas_price, max_fee_per_gas, max_priority_fee_per_gas, input_data, nonce, transaction_index, status) VALUES %s ON CONFLICT (tx_hash) DO NOTHING",
+                    "INSERT INTO transactions (tx_hash, block_number, from_address, to_address, value, gas_limit, gas_price, max_fee_per_gas, max_priority_fee_per_gas, input_data, method_id, nonce, transaction_index, status) VALUES %s ON CONFLICT (tx_hash) DO NOTHING",
                     tx_data
                 )
             

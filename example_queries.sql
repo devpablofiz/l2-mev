@@ -28,7 +28,7 @@ SELECT
         ELSE 'Consistent'
     END as status_check
 FROM transactions t
-JOIN method_tags mt ON SUBSTRING(t.input_data, 1, 10) = mt.method_id
+JOIN method_tags mt ON t.method_id = mt.method_id
 GROUP BY mt.method_id, mt.tag_name
 ORDER BY unique_contracts DESC;
 
@@ -40,7 +40,7 @@ SELECT
     COUNT(*) as call_count,
     MIN(input_data) as sample_data
 FROM transactions
-WHERE SUBSTRING(input_data, 1, 10) = '0xa9059cbb' 
+WHERE method_id = '0xa9059cbb' 
 GROUP BY to_address
 ORDER BY call_count DESC
 LIMIT 20;
@@ -57,13 +57,13 @@ WITH top_senders AS (
 calldata_stats AS (
     SELECT 
         t.input_data,
-        SUBSTRING(t.input_data, 1, 10) as method_id,
+        t.method_id,
         COUNT(*) as usage_count,
         COUNT(DISTINCT t.from_address) as unique_top_senders
     FROM transactions t
     JOIN top_senders ts ON t.from_address = ts.from_address
     WHERE t.input_data <> '0x'
-    GROUP BY t.input_data, method_id
+    GROUP BY t.input_data, t.method_id
 )
 SELECT 
     method_id,
@@ -78,14 +78,14 @@ LIMIT 100;
 -- TAGGING WORKFLOW: Step 1 - Identify top untagged methods
 -- Use this to find which method IDs you should research and tag next.
 SELECT 
-    SUBSTRING(input_data, 1, 10) as method_id,
+    method_id,
     COUNT(*) as usage_count,
     COUNT(DISTINCT from_address) as unique_senders,
     MIN(tx_hash) as sample_tx_hash
 FROM transactions
-LEFT JOIN method_tags mt ON SUBSTRING(input_data, 1, 10) = mt.method_id
+LEFT JOIN method_tags mt ON transactions.method_id = mt.method_id
 WHERE mt.method_id IS NULL AND input_data <> '0x'
-GROUP BY SUBSTRING(input_data, 1, 10)
+GROUP BY method_id
 ORDER BY usage_count DESC
 LIMIT 20;
 
@@ -106,7 +106,7 @@ sender_recent_txs AS (
     SELECT 
         from_address,
         input_data,
-        SUBSTRING(input_data, 1, 10) as method_id,
+        method_id,
         ROW_NUMBER() OVER (PARTITION BY from_address ORDER BY block_number DESC) as tx_rank
     FROM transactions
     WHERE from_address IN (SELECT from_address FROM top_senders)
@@ -197,7 +197,7 @@ WITH stats AS (
     from_address,
     COUNT(*) AS tx_count,
     COUNT(DISTINCT to_address) AS targets,
-    COUNT(DISTINCT SUBSTRING(input_data,1,10)) AS methods
+    COUNT(DISTINCT method_id) AS methods
   FROM transactions
   WHERE input_data <> '0x' AND value = 0
   GROUP BY from_address
@@ -233,7 +233,7 @@ ORDER BY gas_stddev ASC;
 -- Repeated CallData
 SELECT
   from_address,
-  SUBSTRING(input_data, 1, 10) AS method_id,
+  method_id,
   COUNT(*) AS calls
 FROM transactions
 WHERE input_data <> '0x'

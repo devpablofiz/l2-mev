@@ -3,12 +3,12 @@ import sys
 import logging
 import psycopg2
 import time
-from psycopg2 import extras
+import threading
+from psycopg2 import extras, pool
 from web3 import Web3
-from web3.datastructures import AttributeDict
-from eth_utils import to_hex
 from dotenv import load_dotenv
 from datetime import datetime
+from concurrent.futures import ThreadPoolExecutor, as_completed
 
 # Load environment variables
 load_dotenv()
@@ -17,95 +17,186 @@ load_dotenv()
 logging.basicConfig(
     level=logging.INFO,
     format='%(asctime)s - %(levelname)s - %(message)s',
-    handlers=[
-        logging.StreamHandler(sys.stdout)
-    ]
+    handlers=[logging.StreamHandler(sys.stdout)]
 )
 logger = logging.getLogger(__name__)
 
-# Environment variables
-RPC_URL = os.getenv("RPC_URL")
-ALCHEMY_RPC_URL = os.getenv("ALCHEMY_RPC_URL")
+# DB Config
 DB_HOST = os.getenv("DB_HOST", "localhost")
 DB_PORT = os.getenv("DB_PORT", "5432")
 DB_NAME = os.getenv("DB_NAME", "l2_mev")
 DB_USER = os.getenv("DB_USER", "postgres")
 DB_PASSWORD = os.getenv("DB_PASSWORD")
-RPC_DELAY = float(os.getenv("RPC_DELAY", "0.1"))
 
-# Alchemy CU Constants (if applicable, though we only use getBlockByNumber)
-ALCHEMY_CU_LIMIT = int(os.getenv("ALCHEMY_CU_LIMIT", "500"))
-CU_COST_BLOCK = int(os.getenv("CU_COST_BLOCK", "16"))
+# RPC Config - Expects a comma-separated list of URLs
+RPC_URLS = os.getenv("RPC_URLS", os.getenv("RPC_URL", "")).split(",")
+RPC_URLS = [url.strip() for url in RPC_URLS if url.strip()]
 
-class CURateLimiter:
-    def __init__(self, cu_limit):
-        self.cu_limit = cu_limit
-        self.last_reset = time.time()
-        self.used_cu = 0
+# Performance Config
+MAX_WORKERS = int(os.getenv("MAX_WORKERS", "10")) # Parallel threads
+BLOCK_BATCH_SIZE = int(os.getenv("BLOCK_BATCH_SIZE", "100")) # Blocks per thread batch
 
-    def wait_for_cu(self, cu_needed):
-        """Wait if the requested CU would exceed the per-second limit."""
-        current_time = time.time()
-        elapsed = current_time - self.last_reset
-        
-        # Reset limit every second
-        if elapsed >= 1.0:
-            self.used_cu = 0
-            self.last_reset = current_time
-        
-        if self.used_cu + cu_needed > self.cu_limit:
-            wait_time = 1.0 - elapsed
-            if wait_time > 0:
-                logger.debug(f"CU limit reached, waiting {wait_time:.2f}s...")
-                time.sleep(wait_time)
-            self.used_cu = 0
-            self.last_reset = time.time()
-        
-        self.used_cu += cu_needed
+# Initialize Connection Pool
+db_pool = pool.ThreadedConnectionPool(
+    minconn=5,
+    maxconn=MAX_WORKERS + 5,
+    host=DB_HOST,
+    port=DB_PORT,
+    dbname=DB_NAME,
+    user=DB_USER,
+    password=DB_PASSWORD
+)
 
-# Initialize the global limiter
-alchemy_limiter = CURateLimiter(ALCHEMY_CU_LIMIT)
+class RPCManager:
+    def __init__(self, urls):
+        self.urls = urls
+        self.clients = []
+        for url in urls:
+            self.clients.append({
+                'w3': Web3(Web3.HTTPProvider(url)),
+                'url': url,
+                'unhealthy_until': 0,
+                'latest_block': 0
+            })
+        self.lock = threading.Lock()
+        self.index = 0
+        if not self.clients:
+            logger.error("No RPC URLs provided!")
+            sys.exit(1)
+        logger.info(f"Initialized RPCManager with {len(self.clients)} endpoints.")
 
-def retry_rpc_call(func, *args, max_retries=5, initial_delay=1, cu_cost=0, **kwargs):
-    """Retry an RPC call with exponential backoff on rate limit errors and CU management."""
-    for i in range(max_retries):
-        try:
-            # Check the limiter if we have a CU cost
-            if cu_cost > 0:
-                alchemy_limiter.wait_for_cu(cu_cost)
+    def get_next_client(self, required_block=None):
+        """Round-robin RPC selection with health and lag checks."""
+        with self.lock:
+            start_index = self.index
+            now = time.time()
             
-            return func(*args, **kwargs)
-        except Exception as e:
-            error_str = str(e)
-            if "limit reached" in error_str or "-32007" in error_str or "429" in error_str:
-                delay = initial_delay * (2 ** i)
-                logger.warning(f"Rate limit hit, retrying in {delay}s... (Attempt {i+1}/{max_retries})")
-                time.sleep(delay)
-            else:
-                raise e
-    return func(*args, **kwargs)
+            while True:
+                client_data = self.clients[self.index]
+                self.index = (self.index + 1) % len(self.clients)
+                
+                # Check if client is in cooldown
+                if client_data['unhealthy_until'] > now:
+                    if self.index == start_index: # We've checked all clients
+                        # All clients are unhealthy? Pick the least unhealthy or wait
+                        break
+                    continue
+                
+                # Check if client is known to be lagging behind the required block
+                if required_block and client_data['latest_block'] > 0 and client_data['latest_block'] < required_block:
+                    if self.index == start_index:
+                        break
+                    continue
+                
+                return client_data['w3']
+            
+            # Fallback: if all are filtered out, just return the next one anyway
+            return self.clients[self.index]['w3']
 
-def get_db_connection():
-    try:
-        conn = psycopg2.connect(
-            host=DB_HOST,
-            port=DB_PORT,
-            dbname=DB_NAME,
-            user=DB_USER,
-            password=DB_PASSWORD
-        )
-        return conn
-    except Exception as e:
-        logger.error(f"Error connecting to database: {e}")
-        sys.exit(1)
+    def mark_unhealthy(self, w3, reason="unknown", duration=300):
+        """Mark an RPC as unhealthy for a duration (default 5 mins)."""
+        url = w3.provider.endpoint_uri
+        with self.lock:
+            for client in self.clients:
+                if client['url'] == url:
+                    client['unhealthy_until'] = time.time() + duration
+                    logger.warning(f"RPC {url} marked unhealthy for {duration}s. Reason: {reason}")
+                    break
 
-def fetch_and_store_block_only(w3, conn, block_number):
+    def update_latest_block(self, w3, block_number):
+        """Update the known latest block for an RPC to avoid future lag errors."""
+        url = w3.provider.endpoint_uri
+        with self.lock:
+            for client in self.clients:
+                if client['url'] == url:
+                    client['latest_block'] = max(client['latest_block'], block_number)
+                    break
+
+rpc_manager = RPCManager(RPC_URLS)
+
+def fetch_and_store_block(block_number):
+    """Fetches a block and its transactions, then stores them in DB."""
+    conn = None
     try:
-        # Get block with full transactions - eth_getBlockByNumber costs 16 CUs
-        block = retry_rpc_call(w3.eth.get_block, block_number, full_transactions=True, cu_cost=CU_COST_BLOCK)
-        time.sleep(RPC_DELAY)
+        w3 = rpc_manager.get_next_client(required_block=block_number)
+        # Retry logic for individual block fetch
+        block = None
+        for attempt in range(5):
+            try:
+                block = w3.eth.get_block(block_number, full_transactions=True)
+                # If successful, we can update the known latest block for this RPC
+                rpc_manager.update_latest_block(w3, block['number'])
+                break
+            except Exception as e:
+                error_msg = str(e).lower()
+                
+                # Specific handling for "block not found" (lagging node)
+                if "not found" in error_msg or "-32014" in error_msg:
+                    logger.warning(f"Block {block_number} not found on {w3.provider.endpoint_uri}. Node might be lagging.")
+                    # If the node reports its own latest block, we could use that, 
+                    # but for now we just try a different RPC immediately.
+                
+                # Specific handling for 401 Unauthorized or Rate Limits
+                elif "401" in error_msg or "402" in error_msg or "429" in error_msg or "unauthorized" in error_msg or "rate limit" in error_msg:
+                    rpc_manager.mark_unhealthy(w3, reason="Auth/RateLimit", duration=600)
+                
+                else:
+                    logger.warning(f"Attempt {attempt+1} failed for block {block_number} on {w3.provider.endpoint_uri}: {e}")
+                
+                time.sleep(0.5) # Fast retry
+                w3 = rpc_manager.get_next_client(required_block=block_number)
+
+        if not block:
+            logger.error(f"Failed to fetch block {block_number} after 5 attempts.")
+            return False
+
         timestamp = datetime.fromtimestamp(block['timestamp'])
         
+        tx_data = []
+        for tx in block['transactions']:
+            try:
+                # Reverting to strict access to catch incomplete data
+                input_data = tx['input']
+                if isinstance(input_data, bytes):
+                    input_data = input_data.hex()
+                elif input_data is None:
+                    input_data = ''
+                    
+                method_id = input_data[:10] if input_data and len(input_data) >= 10 else input_data
+                
+                tx_hash = tx['hash']
+                if isinstance(tx_hash, bytes):
+                    tx_hash = tx_hash.hex()
+                
+                # These fields are required for integrity
+                nonce = tx['nonce']
+                from_addr = tx['from']
+                to_addr = tx['to']
+                value = float(Web3.from_wei(tx['value'], 'ether'))
+                
+                tx_data.append((
+                    tx_hash,
+                    block['number'],
+                    from_addr,
+                    to_addr,
+                    value,
+                    tx.get('gas'),
+                    tx.get('gasPrice'),
+                    tx.get('maxFeePerGas'),
+                    tx.get('maxPriorityFeePerGas'),
+                    input_data,
+                    method_id,
+                    nonce,
+                    tx.get('transactionIndex')
+                ))
+            except KeyError as e:
+                # LOG THE OFFENDING RPC
+                offending_url = w3.provider.endpoint_uri
+                logger.error(f"INCOMPLETE DATA detected on RPC {offending_url} for block {block_number}: Missing field {e}")
+                # Re-raise to trigger the retry/switch logic in the outer loop
+                raise Exception(f"Incomplete transaction data (missing {e}) from {offending_url}")
+
+        conn = db_pool.getconn()
         with conn.cursor() as cur:
             # Insert block
             cur.execute(
@@ -113,70 +204,77 @@ def fetch_and_store_block_only(w3, conn, block_number):
                 (block['number'], block['hash'].hex(), timestamp)
             )
             
-            # Prepare transactions for batch insert
-            tx_data = []
-            
-            for tx in block['transactions']:
-                tx_hash_hex = tx['hash'].hex()
-                
-                tx_data.append((
-                    tx_hash_hex,
-                    block['number'],
-                    tx['from'],
-                    tx['to'],
-                    float(w3.from_wei(tx['value'], 'ether')),
-                    tx['gas'],
-                    tx.get('gasPrice'),
-                    tx.get('maxFeePerGas'),
-                    tx.get('maxPriorityFeePerGas'),
-                    tx['input'].hex() if isinstance(tx['input'], bytes) else tx['input'],
-                    tx['nonce'],
-                    tx['transactionIndex'],
-                    None # status is not available without receipt
-                ))
-            
+            # Insert transactions
             if tx_data:
                 extras.execute_values(
                     cur,
-                    "INSERT INTO transactions (tx_hash, block_number, from_address, to_address, value, gas_limit, gas_price, max_fee_per_gas, max_priority_fee_per_gas, input_data, nonce, transaction_index, status) VALUES %s ON CONFLICT (tx_hash) DO NOTHING",
+                    "INSERT INTO transactions (tx_hash, block_number, from_address, to_address, value, gas_limit, gas_price, max_fee_per_gas, max_priority_fee_per_gas, input_data, method_id, nonce, transaction_index) VALUES %s ON CONFLICT (tx_hash) DO NOTHING",
                     tx_data
                 )
         
         conn.commit()
-        logger.info(f"Successfully loaded block {block_number} with {len(block['transactions'])} transactions (no receipts).")
         return True
     except Exception as e:
-        logger.error(f"Error loading block {block_number}: {e}")
-        conn.rollback()
+        logger.error(f"Error processing block {block_number}: {e}")
+        if conn:
+            conn.rollback()
         return False
+    finally:
+        if conn:
+            db_pool.putconn(conn)
 
-def main(start_block, end_block):
-    if not RPC_URL:
-        logger.error("RPC_URL not found in environment variables.")
-        return
+def get_existing_blocks(start_block, end_block):
+    """Returns a set of block numbers already in the DB within a range."""
+    conn = db_pool.getconn()
+    try:
+        with conn.cursor() as cur:
+            cur.execute("SELECT block_number FROM blocks WHERE block_number BETWEEN %s AND %s", (min(start_block, end_block), max(start_block, end_block)))
+            return {row[0] for row in cur.fetchall()}
+    finally:
+        db_pool.putconn(conn)
 
-    w3 = Web3(Web3.HTTPProvider(ALCHEMY_RPC_URL))
-    if not w3.is_connected():
-        logger.error("Failed to connect to RPC.")
-        return
+def main():
+    # Get latest block from network
+    w3 = rpc_manager.get_next_client()
+    latest_block = w3.eth.block_number
+    logger.info(f"Latest network block: {latest_block}")
     
-    current_block = retry_rpc_call(lambda: w3.eth.block_number)
-    time.sleep(RPC_DELAY)
-    logger.info(f"Connected to RPC. Current block: {current_block}")
+    # We'll go back 15.7 million blocks (roughly a year)
+    # or stop if the user interrupts.
+    target_start_block = latest_block
+    target_end_block = max(0, latest_block - 15700000)
     
-    conn = get_db_connection()
+    logger.info(f"Starting backward scrape from {target_start_block} to {target_end_block} using {MAX_WORKERS} workers.")
     
-    for block_num in range(start_block, end_block + 1):
-        fetch_and_store_block_only(w3, conn, block_num)
+    blocks_processed = 0
     
-    conn.close()
-    logger.info("Finished loading blocks.")
+    with ThreadPoolExecutor(max_workers=MAX_WORKERS) as executor:
+        # Process in chunks backwards
+        for i in range(target_start_block, target_end_block - 1, -BLOCK_BATCH_SIZE):
+            batch_end = max(target_end_block, i - BLOCK_BATCH_SIZE + 1)
+            current_batch_range = range(i, batch_end - 1, -1)
+            
+            # Check which blocks in this batch already exist
+            existing = get_existing_blocks(i, batch_end)
+            to_fetch = [b for b in current_batch_range if b not in existing]
+            
+            if not to_fetch:
+                continue
+
+            future_to_block = {executor.submit(fetch_and_store_block, b): b for b in to_fetch}
+            
+            for future in as_completed(future_to_block):
+                block_num = future_to_block[future]
+                try:
+                    success = future.result()
+                    if success:
+                        blocks_processed += 1
+                        if blocks_processed % 100 == 0:
+                            logger.info(f"Progress: {blocks_processed} new blocks stored.")
+                except Exception as exc:
+                    logger.error(f"Block {block_num} generated an exception: {exc}")
+
+    logger.info(f"Finished. Successfully processed {blocks_processed} new blocks.")
 
 if __name__ == "__main__":
-    if len(sys.argv) < 3:
-        print("Usage: python load_blocks_only.py <start_block> <end_block>")
-        sys.exit(1)
-        
-    start = int(sys.argv[1])
-    end = int(sys.argv[2])
-    main(start, end)
+    main()
