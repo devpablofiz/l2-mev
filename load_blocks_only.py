@@ -33,8 +33,9 @@ RPC_URLS = os.getenv("RPC_URLS", os.getenv("RPC_URL", "")).split(",")
 RPC_URLS = [url.strip() for url in RPC_URLS if url.strip()]
 
 # Performance Config
-MAX_WORKERS = int(os.getenv("MAX_WORKERS", "10")) # Parallel threads
-BLOCK_BATCH_SIZE = int(os.getenv("BLOCK_BATCH_SIZE", "100")) # Blocks per thread batch
+MAX_WORKERS = int(os.getenv("MAX_WORKERS", "20")) # Parallel threads
+BLOCK_BATCH_SIZE = int(os.getenv("BLOCK_BATCH_SIZE", "200")) # Total blocks to process in one outer loop iteration
+RPC_BATCH_SIZE = int(os.getenv("RPC_BATCH_SIZE", "10")) # Blocks per RPC batch request
 
 # Initialize Connection Pool
 db_pool = pool.ThreadedConnectionPool(
@@ -115,138 +116,134 @@ class RPCManager:
 
 rpc_manager = RPCManager(RPC_URLS)
 
-def fetch_and_store_block(block_number):
-    """Fetches a block and its transactions, then stores them in DB."""
+def fetch_and_store_block_batch(block_numbers):
+    """Fetches a batch of blocks and their transactions, then stores them in DB."""
+    if not block_numbers:
+        return 0
+        
     conn = None
-    start_time = time.time()
     try:
-        w3 = rpc_manager.get_next_client(required_block=block_number)
+        w3 = rpc_manager.get_next_client(required_block=max(block_numbers))
         rpc_url = w3.provider.endpoint_uri
-        # Retry logic for individual block fetch
-        block = None
+        
+        blocks = []
+        # Retry logic for the batch
         for attempt in range(5):
             try:
-                fetch_start = time.time()
-                block = w3.eth.get_block(block_number, full_transactions=True)
-                fetch_duration = time.time() - fetch_start
+                with w3.batch_requests() as batch:
+                    for b_num in block_numbers:
+                        batch.add(w3.eth.get_block(b_num, full_transactions=True))
+                    blocks = batch.execute()
                 
-                # If successful, we can update the known latest block for this RPC
-                rpc_manager.update_latest_block(w3, block['number'])
-                
-                # logger.info(f"Fetched block {block_number} from {rpc_url} in {fetch_duration:.2f}s")
-                break
+                if blocks and all(blocks):
+                    # If successful, update latest block
+                    max_fetched = max(b['number'] for b in blocks if b)
+                    rpc_manager.update_latest_block(w3, max_fetched)
+                    break
             except Exception as e:
                 error_msg = str(e).lower()
-                
-                # Specific handling for timeout
                 if "timeout" in error_msg:
-                    logger.warning(f"Timeout fetching block {block_number} from {rpc_url}. Marking unhealthy.")
                     rpc_manager.mark_unhealthy(w3, reason="Timeout", duration=120)
-                
-                # Specific handling for "block not found" (lagging node)
                 elif "not found" in error_msg or "-32014" in error_msg:
-                    logger.warning(f"Block {block_number} not found on {rpc_url}. Node might be lagging.")
-                
-                # Specific handling for 401 Unauthorized or Rate Limits
-                elif "401" in error_msg or "402" in error_msg or "429" in error_msg or "unauthorized" in error_msg or "rate limit" in error_msg:
+                    logger.warning(f"Some blocks in batch {block_numbers} not found on {rpc_url}.")
+                elif any(x in error_msg for x in ["401", "402", "429", "unauthorized", "rate limit", "too many requests"]):
                     rpc_manager.mark_unhealthy(w3, reason="Auth/RateLimit", duration=600)
-                
                 else:
-                    logger.warning(f"Attempt {attempt+1} failed for block {block_number} on {rpc_url}: {e}")
+                    logger.warning(f"Attempt {attempt+1} failed for batch starting at {block_numbers[0]} on {rpc_url}: {e}")
                 
-                time.sleep(0.5) # Fast retry
-                w3 = rpc_manager.get_next_client(required_block=block_number)
-                rpc_url = w3.provider.endpoint_uri
+                if attempt < 4:
+                    time.sleep(0.5)
+                    w3 = rpc_manager.get_next_client(required_block=max(block_numbers))
+                    rpc_url = w3.provider.endpoint_uri
+                else:
+                    logger.error(f"Failed to fetch batch {block_numbers} after 5 attempts.")
+                    return 0
 
-        if not block:
-            logger.error(f"Failed to fetch block {block_number} after 5 attempts.")
-            return False
+        if not blocks:
+            return 0
 
-        timestamp = datetime.fromtimestamp(block['timestamp'])
+        all_tx_data = []
+        all_block_data = []
         
-        tx_data = []
-        for tx in block['transactions']:
-            try:
-                # Reverting to strict access to catch incomplete data
-                input_data = tx['input']
-                if isinstance(input_data, bytes):
-                    input_data = input_data.hex()
-                elif input_data is None:
-                    input_data = ''
+        for block in blocks:
+            if not block: continue
+            
+            timestamp = datetime.fromtimestamp(block['timestamp'])
+            all_block_data.append((block['number'], block['hash'].hex(), timestamp))
+            
+            for tx in block['transactions']:
+                try:
+                    input_data = tx['input']
+                    if isinstance(input_data, bytes):
+                        input_data = input_data.hex()
+                    elif input_data is None:
+                        input_data = ''
+                        
+                    method_id = input_data[:10] if input_data and len(input_data) >= 10 else input_data
                     
-                method_id = input_data[:10] if input_data and len(input_data) >= 10 else input_data
-                
-                tx_hash = tx['hash']
-                if isinstance(tx_hash, bytes):
-                    tx_hash = tx_hash.hex()
-                
-                # These fields are required for integrity
-                nonce = tx['nonce']
-                from_addr = tx['from']
-                to_addr = tx['to']
-                value = float(Web3.from_wei(tx['value'], 'ether'))
-                
-                tx_data.append((
-                    tx_hash,
-                    block['number'],
-                    from_addr,
-                    to_addr,
-                    value,
-                    tx.get('gas'),
-                    tx.get('gasPrice'),
-                    tx.get('maxFeePerGas'),
-                    tx.get('maxPriorityFeePerGas'),
-                    input_data,
-                    method_id,
-                    nonce,
-                    tx.get('transactionIndex')
-                ))
-            except KeyError as e:
-                # LOG THE OFFENDING RPC
-                offending_url = w3.provider.endpoint_uri
-                logger.error(f"INCOMPLETE DATA detected on RPC {offending_url} for block {block_number}: Missing field {e}")
-                # Re-raise to trigger the retry/switch logic in the outer loop
-                raise Exception(f"Incomplete transaction data (missing {e}) from {offending_url}")
+                    tx_hash = tx['hash']
+                    if isinstance(tx_hash, bytes):
+                        tx_hash = tx_hash.hex()
+                    
+                    tx_data = (
+                        tx_hash,
+                        block['number'],
+                        tx['from'],
+                        tx['to'],
+                        float(Web3.from_wei(tx['value'], 'ether')),
+                        tx.get('gas'),
+                        tx.get('gasPrice'),
+                        tx.get('maxFeePerGas'),
+                        tx.get('maxPriorityFeePerGas'),
+                        input_data,
+                        method_id,
+                        tx['nonce'],
+                        tx.get('transactionIndex')
+                    )
+                    all_tx_data.append(tx_data)
+                except KeyError as e:
+                    logger.error(f"INCOMPLETE DATA on RPC {rpc_url} for block {block['number']}: Missing field {e}")
+                    # We might want to skip this block or retry, but for now let's just log and continue
+                    continue
 
-        db_conn_start = time.time()
+        if not all_block_data:
+            return 0
+
         conn = db_pool.getconn()
-        db_conn_duration = time.time() - db_conn_start
-        
-        db_exec_start = time.time()
-        with conn.cursor() as cur:
-            # Performance optimization: Disable synchronous commit for this session.
-            # This significantly speeds up inserts by not waiting for disk flush.
-            cur.execute("SET synchronous_commit TO OFF")
-            
-            # Insert block
-            cur.execute(
-                "INSERT INTO blocks (block_number, block_hash, timestamp) VALUES (%s, %s, %s) ON CONFLICT (block_number) DO NOTHING",
-                (block['number'], block['hash'].hex(), timestamp)
-            )
-            
-            # Insert transactions
-            if tx_data:
+        try:
+            with conn.cursor() as cur:
+                cur.execute("SET synchronous_commit TO OFF")
+                
+                # Insert blocks
                 extras.execute_values(
                     cur,
-                    "INSERT INTO transactions (tx_hash, block_number, from_address, to_address, value, gas_limit, gas_price, max_fee_per_gas, max_priority_fee_per_gas, input_data, method_id, nonce, transaction_index) VALUES %s ON CONFLICT (tx_hash) DO NOTHING",
-                    tx_data
+                    "INSERT INTO blocks (block_number, block_hash, timestamp) VALUES %s ON CONFLICT (block_number) DO NOTHING",
+                    all_block_data
                 )
-        
-        conn.commit()
-        db_exec_duration = time.time() - db_exec_start
-        
-        total_duration = time.time() - start_time
-        logger.info(f"Stored block {block_number} ({len(tx_data)} txs) from {rpc_url} | Fetch: {fetch_duration:.2f}s | DB Conn: {db_conn_duration:.2f}s | DB Exec: {db_exec_duration:.2f}s | Total: {total_duration:.2f}s")
-        
-        return True
-    except Exception as e:
-        logger.error(f"Error processing block {block_number}: {e}")
-        if conn:
+                
+                # Insert transactions
+                if all_tx_data:
+                    extras.execute_values(
+                        cur,
+                        "INSERT INTO transactions (tx_hash, block_number, from_address, to_address, value, gas_limit, gas_price, max_fee_per_gas, max_priority_fee_per_gas, input_data, method_id, nonce, transaction_index) VALUES %s ON CONFLICT (tx_hash) DO NOTHING",
+                        all_tx_data
+                    )
+            conn.commit()
+            return len(all_block_data)
+        except Exception as e:
+            logger.error(f"DB Error processing batch: {e}")
             conn.rollback()
-        return False
-    finally:
-        if conn:
+            return 0
+        finally:
             db_pool.putconn(conn)
+
+    except Exception as e:
+        logger.error(f"Unexpected error in batch processing: {e}")
+        return 0
+
+def fetch_and_store_block(block_number):
+    """Fallback/Legacy single block fetcher, now just calls the batch version."""
+    return fetch_and_store_block_batch([block_number]) > 0
 
 def get_existing_blocks(start_block, end_block):
     """Returns a set of block numbers already in the DB within a range."""
@@ -284,26 +281,23 @@ def process_block_range(executor, start_block, end_block):
         to_fetch = [b for b in current_batch_range if b not in existing]
         
         if not to_fetch:
-            # logger.debug(f"Batch {i} to {batch_end} already fully in DB.")
             continue
 
-        logger.info(f"Fetching {len(to_fetch)} missing blocks in batch {i} to {batch_end}")
-        future_to_block = {executor.submit(fetch_and_store_block, b): b for b in to_fetch}
+        # Split to_fetch into smaller chunks for RPC batching
+        rpc_chunks = [to_fetch[j:j + RPC_BATCH_SIZE] for j in range(0, len(to_fetch), RPC_BATCH_SIZE)]
         
-        batch_processed = 0
-        for future in as_completed(future_to_block):
-            block_num = future_to_block[future]
+        future_to_chunk = {executor.submit(fetch_and_store_block_batch, chunk): chunk for chunk in rpc_chunks}
+        
+        for future in as_completed(future_to_chunk):
             try:
-                success = future.result()
-                if success:
-                    blocks_processed += 1
-                    batch_processed += 1
-                    if blocks_processed % 10 == 0: # More frequent logging
+                count = future.result()
+                if count > 0:
+                    blocks_processed += count
+                    if blocks_processed % 100 < count: # Log every 100 blocks
                         logger.info(f"Progress: {blocks_processed} new blocks stored in this range.")
             except Exception as exc:
-                logger.error(f"Block {block_num} generated an exception: {exc}")
-        
-        logger.info(f"Batch {i} to {batch_end} complete. Processed {batch_processed} blocks.")
+                chunk = future_to_chunk[future]
+                logger.error(f"Batch starting at {chunk[0]} generated an exception: {exc}")
     return blocks_processed
 
 def main():
