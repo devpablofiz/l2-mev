@@ -9,6 +9,8 @@ import plotly.express as px
 from sqlalchemy import create_engine
 import warnings
 
+import db_utils
+
 # MUST BE FIRST
 st.set_page_config(page_title="MEV Method Tagger", layout="wide")
 
@@ -19,11 +21,6 @@ load_dotenv()
 warnings.filterwarnings("ignore", message=".*pandas only supports SQLAlchemy connectable.*")
 
 # DB Connection Details
-DB_HOST = os.getenv("DB_HOST", "localhost")
-DB_PORT = os.getenv("DB_PORT", "5432")
-DB_NAME = os.getenv("DB_NAME", "l2_mev")
-DB_USER = os.getenv("DB_USER", "postgres")
-DB_PASSWORD = os.getenv("DB_PASSWORD")
 TENDERLY_RPC_URL = os.getenv("TENDERLY_RPC_URL")
 
 def trace_transaction_tenderly(tx_hash):
@@ -51,17 +48,10 @@ def trace_transaction_tenderly(tx_hash):
         return f"Request Error: {str(e)}"
 
 def get_db_connection():
-    return psycopg2.connect(
-        host=DB_HOST,
-        port=DB_PORT,
-        database=DB_NAME,
-        user=DB_USER,
-        password=DB_PASSWORD
-    )
+    return db_utils.get_db_connection()
 
 def get_sqlalchemy_engine():
-    url = f"postgresql://{DB_USER}:{DB_PASSWORD}@{DB_HOST}:{DB_PORT}/{DB_NAME}"
-    return create_engine(url)
+    return db_utils.get_sqlalchemy_engine()
 
 st.title("🛡️ MEV Method Tagger")
 st.markdown("Analyze and tag the most used calldata methods to identify bots and spam.")
@@ -89,16 +79,13 @@ DEFAULT_TAGS = [
 
 @st.cache_data(ttl=3600)
 def get_all_method_frequencies():
-    """Fetch usage counts directly from the transactions table."""
     conn = get_db_connection()
     cur = conn.cursor()
     query = """
     SELECT 
         method_id,
-        COUNT(*) as usage_count
-    FROM transactions
-    WHERE method_id IS NOT NULL AND method_id <> '0x'
-    GROUP BY method_id
+        usage_count
+    FROM method_frequencies
     ORDER BY usage_count DESC
     LIMIT 1000;
     """
@@ -133,19 +120,29 @@ def fetch_untagged_methods():
         conn.close()
         return []
 
-    # 4. Get samples for only those 10
+    # 4. Get up to 10 recent samples for only those 10
     results = []
     for i, (mid, count) in enumerate(untagged_top):
         cur.execute("""
-            SELECT 
-                tx_hash as sample_tx_hash,
-                input_data as sample_data
-            FROM transactions 
-            WHERE method_id = %s
-            LIMIT 1
+            WITH ranked AS (
+                SELECT 
+                    tx_hash,
+                    input_data,
+                    to_address,
+                    block_number,
+                    ROW_NUMBER() OVER (PARTITION BY to_address ORDER BY block_number DESC) AS rn
+                FROM transactions 
+                WHERE method_id = %s
+            )
+            SELECT tx_hash, input_data
+            FROM ranked
+            WHERE rn = 1
+            ORDER BY block_number DESC
+            LIMIT 10
         """, (mid,))
-        stats = cur.fetchone()
-        results.append((mid, count, stats[0], stats[1]))
+        rows = cur.fetchall()
+        samples = [(r[0], r[1]) for r in rows] if rows else []
+        results.append((mid, count, samples))
         
     cur.close()
     conn.close()
@@ -169,26 +166,35 @@ def fetch_tagged_methods_with_samples():
     # 2. Get usage frequencies (pre-calculated)
     all_stats = {mid: count for mid, count in get_all_method_frequencies()}
     
-    # 3. Get samples for each
+    # 3. Get up to 10 recent samples for each
     results = []
     for mid, tag_name, description in tagged_methods:
         count = all_stats.get(mid, 0)
         cur.execute("""
-            SELECT 
-                tx_hash as sample_tx_hash,
-                input_data as sample_data
-            FROM transactions 
-            WHERE method_id = %s
-            LIMIT 1
+            WITH ranked AS (
+                SELECT 
+                    tx_hash,
+                    input_data,
+                    to_address,
+                    block_number,
+                    ROW_NUMBER() OVER (PARTITION BY to_address ORDER BY block_number DESC) AS rn
+                FROM transactions 
+                WHERE method_id = %s
+            )
+            SELECT tx_hash, input_data
+            FROM ranked
+            WHERE rn = 1
+            ORDER BY block_number DESC
+            LIMIT 10
         """, (mid,))
-        stats = cur.fetchone()
+        rows = cur.fetchall()
+        samples = [(r[0], r[1]) for r in rows] if rows else []
         results.append({
             "method_id": mid, 
             "tag_name": tag_name, 
             "description": description,
-            "usage_count": count, 
-            "sample_tx_hash": stats[0], 
-            "sample_data": stats[1]
+            "usage_count": count,
+            "samples": samples
         })
         
     cur.close()
@@ -276,8 +282,8 @@ def init_db():
 if 'data_loaded' not in st.session_state:
     st.info("👋 Welcome! Click the button below to load the dashboard data.")
     if st.button("🚀 Load Dashboard Data", use_container_width=True):
-        # Ensure tagging tables exist (does not alter existing tables)
         init_db()
+        db_utils.ensure_method_frequencies_view()
         st.session_state.data_loaded = True
         st.rerun()
     st.stop() # Absolutely stop here until they click
@@ -364,25 +370,33 @@ with col1:
     if not untagged:
         st.success("No untagged methods found!")
     else:
-        for method_id, count, tx_hash, sample in untagged:
+        for method_id, count, samples in untagged:
             with st.expander(f"Method: {method_id} ({count} txs)"):
-                url = "https://basescan.org/tx/0x"+tx_hash
-                st.write(f"**Sample TX:** [`{tx_hash}`](%s)" % url)
-                
-                trace_col1, trace_col2 = st.columns([1, 4])
-                with trace_col1:
-                    if st.button("🔍 Trace with Tenderly", key=f"trace_{tx_hash}"):
-                        with st.spinner("Fetching trace..."):
-                            trace_result = trace_transaction_tenderly(tx_hash)
-                            if isinstance(trace_result, str):
-                                st.error(trace_result)
-                            else:
-                                st.session_state[f"trace_data_{tx_hash}"] = trace_result
-                
-                if f"trace_data_{tx_hash}" in st.session_state:
-                    st.code(json.dumps(st.session_state[f"trace_data_{tx_hash}"], indent=2), language="json")
+                if samples:
+                    links = [f"[{tx}](https://basescan.org/tx/0x{tx})" for tx, _ in samples]
+                    st.write("Sample TXs: " + ", ".join(links))
 
-                st.code(sample, language="text")
+                    # Select a sample to inspect
+                    tx_options = [tx for tx, _ in samples]
+                    selected_tx = st.selectbox("Select a sample to inspect", tx_options, key=f"sel_{method_id}")
+                    selected_input = next((idata for tx, idata in samples if tx == selected_tx), "")
+
+                    trace_col1, _ = st.columns([1, 4])
+                    with trace_col1:
+                        if st.button("🔍 Trace selected", key=f"trace_{method_id}_{selected_tx}"):
+                            with st.spinner("Fetching trace..."):
+                                trace_result = trace_transaction_tenderly(selected_tx)
+                                if isinstance(trace_result, str):
+                                    st.error(trace_result)
+                                else:
+                                    st.session_state[f"trace_data_{method_id}_{selected_tx}"] = trace_result
+                    
+                    if f"trace_data_{method_id}_{selected_tx}" in st.session_state:
+                        st.code(json.dumps(st.session_state[f"trace_data_{method_id}_{selected_tx}"], indent=2), language="json")
+
+                    st.code(selected_input, language="text")
+                else:
+                    st.info("No sample transactions available for this method.")
                 
                 with st.form(key=f"form_{method_id}"):
                     tag_col1, tag_col2 = st.columns(2)
@@ -418,24 +432,32 @@ with col1:
             with st.expander(f"{item['tag_name']} ({item['method_id']}) - {item['usage_count']} txs"):
                 st.write(f"**Description:** {item['description'] or 'No description'}")
                 
-                url = "https://basescan.org/tx/0x" + item['sample_tx_hash']
-                st.write(f"**Example TX:** [`{item['sample_tx_hash']}`](%s)" % url)
-                
-                # Re-use trace functionality
-                trace_col1, trace_col2 = st.columns([1, 4])
-                with trace_col1:
-                    if st.button("🔍 Trace Example", key=f"trace_tagged_{item['sample_tx_hash']}"):
-                        with st.spinner("Fetching trace..."):
-                            trace_result = trace_transaction_tenderly(item['sample_tx_hash'])
-                            if isinstance(trace_result, str):
-                                st.error(trace_result)
-                            else:
-                                st.session_state[f"trace_data_{item['sample_tx_hash']}"] = trace_result
-                
-                if f"trace_data_{item['sample_tx_hash']}" in st.session_state:
-                    st.code(json.dumps(st.session_state[f"trace_data_{item['sample_tx_hash']}"], indent=2), language="json")
+                samples = item.get("samples", [])
+                if samples:
+                    links = [f"[{tx}](https://basescan.org/tx/0x{tx})" for tx, _ in samples]
+                    st.write("Sample TXs: " + ", ".join(links))
 
-                st.code(item['sample_data'], language="text")
+                    tx_options = [tx for tx, _ in samples]
+                    selected_tx = st.selectbox("Select a sample to inspect", tx_options, key=f"tag_sel_{item['method_id']}")
+                    selected_input = next((idata for tx, idata in samples if tx == selected_tx), "")
+                    
+                    # Re-use trace functionality for the selected sample
+                    trace_col1, _ = st.columns([1, 4])
+                    with trace_col1:
+                        if st.button("🔍 Trace selected", key=f"trace_tagged_{item['method_id']}_{selected_tx}"):
+                            with st.spinner("Fetching trace..."):
+                                trace_result = trace_transaction_tenderly(selected_tx)
+                                if isinstance(trace_result, str):
+                                    st.error(trace_result)
+                                else:
+                                    st.session_state[f"trace_data_{item['method_id']}_{selected_tx}"] = trace_result
+                    
+                    if f"trace_data_{item['method_id']}_{selected_tx}" in st.session_state:
+                        st.code(json.dumps(st.session_state[f"trace_data_{item['method_id']}_{selected_tx}"], indent=2), language="json")
+
+                    st.code(selected_input, language="text")
+                else:
+                    st.info("No sample transactions available for this method.")
                 
                 # Option to re-tag or edit
                 with st.form(key=f"edit_form_{item['method_id']}"):
@@ -470,6 +492,16 @@ with col2:
             # Clear everything including frequencies for a fresh start
             st.cache_data.clear()
             st.success(f"Tagged {count} new addresses based on their recent activity!")
+
+    if st.button("🧮 Refresh Method Frequencies View", use_container_width=True):
+        with st.spinner("Refreshing materialized view..."):
+            db_utils.refresh_method_frequencies(concurrently=True)
+            get_all_method_frequencies.clear()
+            fetch_untagged_methods.clear()
+            fetch_tagged_methods_with_samples.clear()
+            fetch_mev_exposure.clear()
+            st.success("Materialized view refreshed.")
+            st.rerun()
 
     if st.button("🔄 Refresh Global Statistics", use_container_width=True):
         get_all_method_frequencies.clear()

@@ -1,0 +1,1199 @@
+{
+  "status": true,
+  "gasUsed": "0x3cc9b",
+  "cumulativeGasUsed": "0x3cc9b",
+  "blockNumber": "0x28b1003",
+  "type": "0x2",
+  "logsBloom": "0x00000000000000000000000000000000002000000000000000000002000000000000000000000000000000000000100000080000000020000000000000040000000000000000000800000008000000000000000000080000000000000000000000800000000000000000000004000000000000020000000000000010000800000000000000000000000000002000000000000000000000000000040000000000000004000000000000000000000000000000000000000000000000000000000000000002000000000000000000000000000000000000000000000000000000200000200000000000000000000000008000000000000000000000000000000000",
+  "logs": [
+    {
+      "name": "Transfer",
+      "anonymous": false,
+      "inputs": [
+        {
+          "value": "0x3e66e55e97ce60096f74b7c475e8249f2d31a9fb",
+          "type": "address",
+          "name": "from",
+          "indexed": true
+        },
+        {
+          "value": "0x278d858f05b94576c1e6f73285886876ff6ef8d2",
+          "type": "address",
+          "name": "to",
+          "indexed": true
+        },
+        {
+          "value": "567496840",
+          "type": "uint256",
+          "name": "value",
+          "indexed": false
+        }
+      ],
+      "raw": {
+        "address": "0x833589fcd6edb6e08f4c7c32d4f71b54bda02913",
+        "topics": [
+          "0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef",
+          "0x0000000000000000000000003e66e55e97ce60096f74b7c475e8249f2d31a9fb",
+          "0x000000000000000000000000278d858f05b94576c1e6f73285886876ff6ef8d2"
+        ],
+        "data": "0x0000000000000000000000000000000000000000000000000000000021d35088"
+      }
+    },
+    {
+      "name": "Transfer",
+      "anonymous": false,
+      "inputs": [
+        {
+          "value": "0x278d858f05b94576c1e6f73285886876ff6ef8d2",
+          "type": "address",
+          "name": "from",
+          "indexed": true
+        },
+        {
+          "value": "0x3e66e55e97ce60096f74b7c475e8249f2d31a9fb",
+          "type": "address",
+          "name": "to",
+          "indexed": true
+        },
+        {
+          "value": "848783",
+          "type": "uint256",
+          "name": "value",
+          "indexed": false
+        }
+      ],
+      "raw": {
+        "address": "0xcbb7c0000ab88b473b1f5afd9ef808440eed33bf",
+        "topics": [
+          "0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef",
+          "0x000000000000000000000000278d858f05b94576c1e6f73285886876ff6ef8d2",
+          "0x0000000000000000000000003e66e55e97ce60096f74b7c475e8249f2d31a9fb"
+        ],
+        "data": "0x00000000000000000000000000000000000000000000000000000000000cf38f"
+      }
+    },
+    {
+      "name": "Swap",
+      "anonymous": false,
+      "inputs": [
+        {
+          "value": "0x278d858f05b94576c1e6f73285886876ff6ef8d2",
+          "type": "address",
+          "name": "sender",
+          "indexed": true
+        },
+        {
+          "value": "0x278d858f05b94576c1e6f73285886876ff6ef8d2",
+          "type": "address",
+          "name": "recipient",
+          "indexed": true
+        },
+        {
+          "value": "-567496840",
+          "type": "int256",
+          "name": "amount0",
+          "indexed": false
+        },
+        {
+          "value": "848783",
+          "type": "int256",
+          "name": "amount1",
+          "indexed": false
+        },
+        {
+          "value": "3063486687839226799015789300",
+          "type": "uint160",
+          "name": "sqrtPriceX96",
+          "indexed": false
+        },
+        {
+          "value": "862795590858",
+          "type": "uint128",
+          "name": "liquidity",
+          "indexed": false
+        },
+        {
+          "value": "-65059",
+          "type": "int24",
+          "name": "tick",
+          "indexed": false
+        }
+      ],
+      "raw": {
+        "address": "0x3e66e55e97ce60096f74b7c475e8249f2d31a9fb",
+        "topics": [
+          "0xc42079f94a6350d7e6235f29174924f928cc2ac818eb64fed8004e115fbcca67",
+          "0x000000000000000000000000278d858f05b94576c1e6f73285886876ff6ef8d2",
+          "0x000000000000000000000000278d858f05b94576c1e6f73285886876ff6ef8d2"
+        ],
+        "data": "0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffde2caf7800000000000000000000000000000000000000000000000000000000000cf38f000000000000000000000000000000000000000009e60e8a1de5a947f96f02f4000000000000000000000000000000000000000000000000000000c8e29feccaffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff01dd"
+      }
+    }
+  ],
+  "trace": [
+    {
+      "type": "CALL",
+      "from": "0x078afcb754c54ec5608246e46dd41616041c9822",
+      "to": "0x278d858f05b94576c1e6f73285886876ff6ef8d2",
+      "gas": "0x8cfb2",
+      "gasUsed": "0x3c247",
+      "value": "0x0",
+      "input": "0xa00597a000000000000000000000000000000000000000000000000000000000000cf38f000000000000000000000000000000000000000009e614f3d8755772fb59d0fa000000000000000000000000cbb7c0000ab88b473b1f5afd9ef808440eed33bf00000000000000000000000000000000000000000000000000000000000000000000000000000000000000003e66e55e97ce60096f74b7c475e8249f2d31a9fb0000000000000000000000000000000000000000000000000000000069a07d9c0d",
+      "output": "0x",
+      "subtraces": 1,
+      "traceAddress": []
+    },
+    {
+      "type": "DELEGATECALL",
+      "from": "0x278d858f05b94576c1e6f73285886876ff6ef8d2",
+      "to": "0x4665c68f89ef352abdbc3c7e317bcd608db51053",
+      "gas": "0x89970",
+      "gasUsed": "0x3aece",
+      "input": "0xa00597a000000000000000000000000000000000000000000000000000000000000cf38f000000000000000000000000000000000000000009e614f3d8755772fb59d0fa000000000000000000000000cbb7c0000ab88b473b1f5afd9ef808440eed33bf00000000000000000000000000000000000000000000000000000000000000000000000000000000000000003e66e55e97ce60096f74b7c475e8249f2d31a9fb0000000000000000000000000000000000000000000000000000000069a07d9c0d",
+      "output": "0x",
+      "subtraces": 1,
+      "traceAddress": [
+        0
+      ]
+    },
+    {
+      "type": "CALL",
+      "from": "0x278d858f05b94576c1e6f73285886876ff6ef8d2",
+      "to": "0x3e66e55e97ce60096f74b7c475e8249f2d31a9fb",
+      "gas": "0x80aff",
+      "gasUsed": "0x33ede",
+      "value": "0x0",
+      "input": "0x128acb08000000000000000000000000278d858f05b94576c1e6f73285886876ff6ef8d2000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000cf38f000000000000000000000000000000000000000009e614f3d8755772fb59d0fa00000000000000000000000000000000000000000000000000000000000000a00000000000000000000000000000000000000000000000000000000000000020000000000000000000000000cbb7c0000ab88b473b1f5afd9ef808440eed33bf",
+      "decodedInput": [
+        {
+          "value": "0x278d858f05b94576c1e6f73285886876ff6ef8d2",
+          "type": "address",
+          "name": "recipient",
+          "indexed": false
+        },
+        {
+          "value": false,
+          "type": "bool",
+          "name": "zeroForOne",
+          "indexed": false
+        },
+        {
+          "value": "848783",
+          "type": "int256",
+          "name": "amountSpecified",
+          "indexed": false
+        },
+        {
+          "value": "3063516972389406668853203194",
+          "type": "uint160",
+          "name": "sqrtPriceLimitX96",
+          "indexed": false
+        },
+        {
+          "value": "0x000000000000000000000000cbb7c0000ab88b473b1f5afd9ef808440eed33bf",
+          "type": "bytes",
+          "name": "data",
+          "indexed": false
+        }
+      ],
+      "method": "swap",
+      "output": "0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffde2caf7800000000000000000000000000000000000000000000000000000000000cf38f",
+      "decodedOutput": [
+        {
+          "value": "-567496840",
+          "type": "int256",
+          "name": "amount0",
+          "indexed": false
+        },
+        {
+          "value": "848783",
+          "type": "int256",
+          "name": "amount1",
+          "indexed": false
+        }
+      ],
+      "subtraces": 1,
+      "traceAddress": [
+        0,
+        0
+      ]
+    },
+    {
+      "type": "DELEGATECALL",
+      "from": "0x3e66e55e97ce60096f74b7c475e8249f2d31a9fb",
+      "to": "0xec8e5342b19977b4ef8892e02d8daecfa1315831",
+      "gas": "0x7e08d",
+      "gasUsed": "0x33447",
+      "input": "0x128acb08000000000000000000000000278d858f05b94576c1e6f73285886876ff6ef8d2000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000cf38f000000000000000000000000000000000000000009e614f3d8755772fb59d0fa00000000000000000000000000000000000000000000000000000000000000a00000000000000000000000000000000000000000000000000000000000000020000000000000000000000000cbb7c0000ab88b473b1f5afd9ef808440eed33bf",
+      "decodedInput": [
+        {
+          "value": "0x278d858f05b94576c1e6f73285886876ff6ef8d2",
+          "type": "address",
+          "name": "recipient",
+          "indexed": false
+        },
+        {
+          "value": false,
+          "type": "bool",
+          "name": "zeroForOne",
+          "indexed": false
+        },
+        {
+          "value": "848783",
+          "type": "int256",
+          "name": "amountSpecified",
+          "indexed": false
+        },
+        {
+          "value": "3063516972389406668853203194",
+          "type": "uint160",
+          "name": "sqrtPriceLimitX96",
+          "indexed": false
+        },
+        {
+          "value": "0x000000000000000000000000cbb7c0000ab88b473b1f5afd9ef808440eed33bf",
+          "type": "bytes",
+          "name": "data",
+          "indexed": false
+        }
+      ],
+      "method": "swap",
+      "output": "0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffde2caf7800000000000000000000000000000000000000000000000000000000000cf38f",
+      "decodedOutput": [
+        {
+          "value": "-567496840",
+          "type": "int256",
+          "name": "amount0",
+          "indexed": false
+        },
+        {
+          "value": "848783",
+          "type": "int256",
+          "name": "amount1",
+          "indexed": false
+        }
+      ],
+      "subtraces": 6,
+      "traceAddress": [
+        0,
+        0,
+        0
+      ]
+    },
+    {
+      "type": "STATICCALL",
+      "from": "0x3e66e55e97ce60096f74b7c475e8249f2d31a9fb",
+      "to": "0x5e7bb104d84c7cb9b682aac2f3d509f5f406809a",
+      "gas": "0x78496",
+      "gasUsed": "0x1251b",
+      "input": "0x35458dcc0000000000000000000000003e66e55e97ce60096f74b7c475e8249f2d31a9fb",
+      "decodedInput": [
+        {
+          "value": "0x3e66e55e97ce60096f74b7c475e8249f2d31a9fb",
+          "type": "address",
+          "name": "pool",
+          "indexed": false
+        }
+      ],
+      "method": "getSwapFee",
+      "output": "0x000000000000000000000000000000000000000000000000000000000000018a",
+      "decodedOutput": [
+        {
+          "value": "394",
+          "type": "uint24",
+          "indexed": false
+        }
+      ],
+      "subtraces": 1,
+      "traceAddress": [
+        0,
+        0,
+        0,
+        0
+      ]
+    },
+    {
+      "type": "STATICCALL",
+      "from": "0x5e7bb104d84c7cb9b682aac2f3d509f5f406809a",
+      "to": "0xdb45818a6db280ecfeb33cbebd445423d0216b5d",
+      "gas": "0x30d40",
+      "gasUsed": "0x10dfd",
+      "input": "0xb88c91480000000000000000000000003e66e55e97ce60096f74b7c475e8249f2d31a9fb",
+      "decodedInput": [
+        {
+          "value": "0x3e66e55e97ce60096f74b7c475e8249f2d31a9fb",
+          "type": "address",
+          "name": "_pool",
+          "indexed": false
+        }
+      ],
+      "method": "getFee",
+      "output": "0x000000000000000000000000000000000000000000000000000000000000018a",
+      "decodedOutput": [
+        {
+          "value": "394",
+          "type": "uint24",
+          "indexed": false
+        }
+      ],
+      "subtraces": 2,
+      "traceAddress": [
+        0,
+        0,
+        0,
+        0,
+        0
+      ]
+    },
+    {
+      "type": "STATICCALL",
+      "from": "0xdb45818a6db280ecfeb33cbebd445423d0216b5d",
+      "to": "0x3e66e55e97ce60096f74b7c475e8249f2d31a9fb",
+      "gas": "0x2f5a1",
+      "gasUsed": "0x34d",
+      "input": "0x3850c7bd",
+      "method": "slot0",
+      "output": "0x000000000000000000000000000000000000000009e5fe0a924181eaa2dc16e7ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff01dc000000000000000000000000000000000000000000000000000000000000002a000000000000000000000000000000000000000000000000000000000000038400000000000000000000000000000000000000000000000000000000000003840000000000000000000000000000000000000000000000000000000000000000",
+      "decodedOutput": [
+        {
+          "value": "3063408777176792774288873191",
+          "type": "uint160",
+          "name": "sqrtPriceX96",
+          "indexed": false
+        },
+        {
+          "value": "-65060",
+          "type": "int24",
+          "name": "tick",
+          "indexed": false
+        },
+        {
+          "value": 42,
+          "type": "uint16",
+          "name": "observationIndex",
+          "indexed": false
+        },
+        {
+          "value": 900,
+          "type": "uint16",
+          "name": "observationCardinality",
+          "indexed": false
+        },
+        {
+          "value": 900,
+          "type": "uint16",
+          "name": "observationCardinalityNext",
+          "indexed": false
+        },
+        {
+          "value": false,
+          "type": "bool",
+          "name": "unlocked",
+          "indexed": false
+        }
+      ],
+      "subtraces": 1,
+      "traceAddress": [
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ]
+    },
+    {
+      "type": "DELEGATECALL",
+      "from": "0x3e66e55e97ce60096f74b7c475e8249f2d31a9fb",
+      "to": "0xec8e5342b19977b4ef8892e02d8daecfa1315831",
+      "gas": "0x2e94b",
+      "gasUsed": "0x289",
+      "input": "0x3850c7bd",
+      "method": "slot0",
+      "output": "0x000000000000000000000000000000000000000009e5fe0a924181eaa2dc16e7ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff01dc000000000000000000000000000000000000000000000000000000000000002a000000000000000000000000000000000000000000000000000000000000038400000000000000000000000000000000000000000000000000000000000003840000000000000000000000000000000000000000000000000000000000000000",
+      "decodedOutput": [
+        {
+          "value": "3063408777176792774288873191",
+          "type": "uint160",
+          "name": "sqrtPriceX96",
+          "indexed": false
+        },
+        {
+          "value": "-65060",
+          "type": "int24",
+          "name": "tick",
+          "indexed": false
+        },
+        {
+          "value": 42,
+          "type": "uint16",
+          "name": "observationIndex",
+          "indexed": false
+        },
+        {
+          "value": 900,
+          "type": "uint16",
+          "name": "observationCardinality",
+          "indexed": false
+        },
+        {
+          "value": 900,
+          "type": "uint16",
+          "name": "observationCardinalityNext",
+          "indexed": false
+        },
+        {
+          "value": false,
+          "type": "bool",
+          "name": "unlocked",
+          "indexed": false
+        }
+      ],
+      "subtraces": 0,
+      "traceAddress": [
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ]
+    },
+    {
+      "type": "STATICCALL",
+      "from": "0xdb45818a6db280ecfeb33cbebd445423d0216b5d",
+      "to": "0x3e66e55e97ce60096f74b7c475e8249f2d31a9fb",
+      "gas": "0x2e6ae",
+      "gasUsed": "0xe511",
+      "input": "0x883bdbfd0000000000000000000000000000000000000000000000000000000000000020000000000000000000000000000000000000000000000000000000000000000200000000000000000000000000000000000000000000000000000000000002580000000000000000000000000000000000000000000000000000000000000000",
+      "decodedInput": [
+        {
+          "value": [
+            600,
+            0
+          ],
+          "type": "uint32[]",
+          "name": "secondsAgos",
+          "indexed": false
+        }
+      ],
+      "method": "observe",
+      "output": "0x000000000000000000000000000000000000000000000000000000000000004000000000000000000000000000000000000000000000000000000000000000a00000000000000000000000000000000000000000000000000000000000000002fffffffffffffffffffffffffffffffffffffffffffffffffffffe18d8ce91e0fffffffffffffffffffffffffffffffffffffffffffffffffffffe18d67b36b0000000000000000000000000000000000000000000000000000000000000000200000000000000000000000000000000004716805e72caf35f6140e3501ba1e000000000000000000000000000000000004716835b10638aa20a7205880bb783",
+      "decodedOutput": [
+        {
+          "value": [
+            "-2092306624032",
+            "-2092345641296"
+          ],
+          "type": "int56[]",
+          "name": "tickCumulatives",
+          "indexed": false
+        },
+        {
+          "value": [
+            "369109460402421798313903669718524384",
+            "369109697039491245468208772699371395"
+          ],
+          "type": "uint160[]",
+          "name": "secondsPerLiquidityCumulativeX128s",
+          "indexed": false
+        }
+      ],
+      "subtraces": 1,
+      "traceAddress": [
+        0,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "type": "DELEGATECALL",
+      "from": "0x3e66e55e97ce60096f74b7c475e8249f2d31a9fb",
+      "to": "0xec8e5342b19977b4ef8892e02d8daecfa1315831",
+      "gas": "0x2da7c",
+      "gasUsed": "0xe435",
+      "input": "0x883bdbfd0000000000000000000000000000000000000000000000000000000000000020000000000000000000000000000000000000000000000000000000000000000200000000000000000000000000000000000000000000000000000000000002580000000000000000000000000000000000000000000000000000000000000000",
+      "decodedInput": [
+        {
+          "value": [
+            600,
+            0
+          ],
+          "type": "uint32[]",
+          "name": "secondsAgos",
+          "indexed": false
+        }
+      ],
+      "method": "observe",
+      "output": "0x000000000000000000000000000000000000000000000000000000000000004000000000000000000000000000000000000000000000000000000000000000a00000000000000000000000000000000000000000000000000000000000000002fffffffffffffffffffffffffffffffffffffffffffffffffffffe18d8ce91e0fffffffffffffffffffffffffffffffffffffffffffffffffffffe18d67b36b0000000000000000000000000000000000000000000000000000000000000000200000000000000000000000000000000004716805e72caf35f6140e3501ba1e000000000000000000000000000000000004716835b10638aa20a7205880bb783",
+      "decodedOutput": [
+        {
+          "value": [
+            "-2092306624032",
+            "-2092345641296"
+          ],
+          "type": "int56[]",
+          "name": "tickCumulatives",
+          "indexed": false
+        },
+        {
+          "value": [
+            "369109460402421798313903669718524384",
+            "369109697039491245468208772699371395"
+          ],
+          "type": "uint160[]",
+          "name": "secondsPerLiquidityCumulativeX128s",
+          "indexed": false
+        }
+      ],
+      "subtraces": 0,
+      "traceAddress": [
+        0,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0
+      ]
+    },
+    {
+      "type": "STATICCALL",
+      "from": "0x3e66e55e97ce60096f74b7c475e8249f2d31a9fb",
+      "to": "0x5e7bb104d84c7cb9b682aac2f3d509f5f406809a",
+      "gas": "0x637f8",
+      "gasUsed": "0x4376",
+      "input": "0x48cf7a430000000000000000000000003e66e55e97ce60096f74b7c475e8249f2d31a9fb",
+      "decodedInput": [
+        {
+          "value": "0x3e66e55e97ce60096f74b7c475e8249f2d31a9fb",
+          "type": "address",
+          "name": "pool",
+          "indexed": false
+        }
+      ],
+      "method": "getUnstakedFee",
+      "output": "0x00000000000000000000000000000000000000000000000000000000000186a0",
+      "decodedOutput": [
+        {
+          "value": "100000",
+          "type": "uint24",
+          "indexed": false
+        }
+      ],
+      "subtraces": 3,
+      "traceAddress": [
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "type": "STATICCALL",
+      "from": "0x5e7bb104d84c7cb9b682aac2f3d509f5f406809a",
+      "to": "0x16613524e02ad97edfef371bc883f2f5d6c480a5",
+      "gas": "0x62bf2",
+      "gasUsed": "0xa72",
+      "input": "0xb9a09fd50000000000000000000000003e66e55e97ce60096f74b7c475e8249f2d31a9fb",
+      "decodedInput": [
+        {
+          "value": "0x3e66e55e97ce60096f74b7c475e8249f2d31a9fb",
+          "type": "address",
+          "indexed": false
+        }
+      ],
+      "method": "gauges",
+      "output": "0x0000000000000000000000009b55cb6cae1e303b5edce6f9fcf90246d382809c",
+      "decodedOutput": [
+        {
+          "value": "0x9b55cb6cae1e303b5edce6f9fcf90246d382809c",
+          "type": "address",
+          "indexed": false
+        }
+      ],
+      "subtraces": 0,
+      "traceAddress": [
+        0,
+        0,
+        0,
+        1,
+        0
+      ]
+    },
+    {
+      "type": "STATICCALL",
+      "from": "0x5e7bb104d84c7cb9b682aac2f3d509f5f406809a",
+      "to": "0x16613524e02ad97edfef371bc883f2f5d6c480a5",
+      "gas": "0x61fc5",
+      "gasUsed": "0xa7a",
+      "input": "0x1703e5f90000000000000000000000009b55cb6cae1e303b5edce6f9fcf90246d382809c",
+      "decodedInput": [
+        {
+          "value": "0x9b55cb6cae1e303b5edce6f9fcf90246d382809c",
+          "type": "address",
+          "indexed": false
+        }
+      ],
+      "method": "isAlive",
+      "output": "0x0000000000000000000000000000000000000000000000000000000000000001",
+      "decodedOutput": [
+        {
+          "value": true,
+          "type": "bool",
+          "indexed": false
+        }
+      ],
+      "subtraces": 0,
+      "traceAddress": [
+        0,
+        0,
+        0,
+        1,
+        1
+      ]
+    },
+    {
+      "type": "STATICCALL",
+      "from": "0x5e7bb104d84c7cb9b682aac2f3d509f5f406809a",
+      "to": "0x0ad08370c76ff426f534bb2affd9b5555338ee68",
+      "gas": "0x609ff",
+      "gasUsed": "0xa18",
+      "input": "0xb88c91480000000000000000000000003e66e55e97ce60096f74b7c475e8249f2d31a9fb",
+      "decodedInput": [
+        {
+          "value": "0x3e66e55e97ce60096f74b7c475e8249f2d31a9fb",
+          "type": "address",
+          "name": "pool",
+          "indexed": false
+        }
+      ],
+      "method": "getFee",
+      "output": "0x00000000000000000000000000000000000000000000000000000000000186a0",
+      "decodedOutput": [
+        {
+          "value": "100000",
+          "type": "uint24",
+          "indexed": false
+        }
+      ],
+      "subtraces": 0,
+      "traceAddress": [
+        0,
+        0,
+        0,
+        1,
+        2
+      ]
+    },
+    {
+      "type": "CALL",
+      "from": "0x3e66e55e97ce60096f74b7c475e8249f2d31a9fb",
+      "to": "0x833589fcd6edb6e08f4c7c32d4f71b54bda02913",
+      "gas": "0x5a005",
+      "gasUsed": "0x5ba7",
+      "value": "0x0",
+      "input": "0xa9059cbb000000000000000000000000278d858f05b94576c1e6f73285886876ff6ef8d20000000000000000000000000000000000000000000000000000000021d35088",
+      "decodedInput": [
+        {
+          "value": "0x278d858f05b94576c1e6f73285886876ff6ef8d2",
+          "type": "address",
+          "name": "recipient",
+          "indexed": false
+        },
+        {
+          "value": "567496840",
+          "type": "uint256",
+          "name": "amount",
+          "indexed": false
+        }
+      ],
+      "output": "0x0000000000000000000000000000000000000000000000000000000000000001",
+      "decodedOutput": [
+        {
+          "value": true,
+          "type": "bool",
+          "indexed": false
+        }
+      ],
+      "subtraces": 1,
+      "traceAddress": [
+        0,
+        0,
+        0,
+        2
+      ]
+    },
+    {
+      "type": "DELEGATECALL",
+      "from": "0x833589fcd6edb6e08f4c7c32d4f71b54bda02913",
+      "to": "0x2ce6311ddae708829bc0784c967b7d77d19fd779",
+      "gas": "0x56dfe",
+      "gasUsed": "0x3f87",
+      "input": "0xa9059cbb000000000000000000000000278d858f05b94576c1e6f73285886876ff6ef8d20000000000000000000000000000000000000000000000000000000021d35088",
+      "decodedInput": [
+        {
+          "value": "0x278d858f05b94576c1e6f73285886876ff6ef8d2",
+          "type": "address",
+          "name": "to",
+          "indexed": false
+        },
+        {
+          "value": "567496840",
+          "type": "uint256",
+          "name": "value",
+          "indexed": false
+        }
+      ],
+      "method": "transfer",
+      "output": "0x0000000000000000000000000000000000000000000000000000000000000001",
+      "decodedOutput": [
+        {
+          "value": true,
+          "type": "bool",
+          "indexed": false
+        }
+      ],
+      "subtraces": 0,
+      "traceAddress": [
+        0,
+        0,
+        0,
+        2,
+        0
+      ]
+    },
+    {
+      "type": "STATICCALL",
+      "from": "0x3e66e55e97ce60096f74b7c475e8249f2d31a9fb",
+      "to": "0xcbb7c0000ab88b473b1f5afd9ef808440eed33bf",
+      "gas": "0x530b7",
+      "gasUsed": "0x2639",
+      "input": "0x70a082310000000000000000000000003e66e55e97ce60096f74b7c475e8249f2d31a9fb",
+      "decodedInput": [
+        {
+          "value": "0x3e66e55e97ce60096f74b7c475e8249f2d31a9fb",
+          "type": "address",
+          "name": "account",
+          "indexed": false
+        }
+      ],
+      "output": "0x00000000000000000000000000000000000000000000000000000000bbe92ef8",
+      "decodedOutput": [
+        {
+          "value": "3152621304",
+          "type": "uint256",
+          "indexed": false
+        }
+      ],
+      "subtraces": 1,
+      "traceAddress": [
+        0,
+        0,
+        0,
+        3
+      ]
+    },
+    {
+      "type": "DELEGATECALL",
+      "from": "0xcbb7c0000ab88b473b1f5afd9ef808440eed33bf",
+      "to": "0x7458bfdc30034eb860b265e6068121d18fa5aa72",
+      "gas": "0x5004e",
+      "gasUsed": "0x9f9",
+      "input": "0x70a082310000000000000000000000003e66e55e97ce60096f74b7c475e8249f2d31a9fb",
+      "decodedInput": [
+        {
+          "value": "0x3e66e55e97ce60096f74b7c475e8249f2d31a9fb",
+          "type": "address",
+          "name": "account",
+          "indexed": false
+        }
+      ],
+      "method": "balanceOf",
+      "output": "0x00000000000000000000000000000000000000000000000000000000bbe92ef8",
+      "decodedOutput": [
+        {
+          "value": "3152621304",
+          "type": "uint256",
+          "indexed": false
+        }
+      ],
+      "subtraces": 0,
+      "traceAddress": [
+        0,
+        0,
+        0,
+        3,
+        0
+      ]
+    },
+    {
+      "type": "CALL",
+      "from": "0x3e66e55e97ce60096f74b7c475e8249f2d31a9fb",
+      "to": "0x278d858f05b94576c1e6f73285886876ff6ef8d2",
+      "gas": "0x5081f",
+      "gasUsed": "0x59e8",
+      "value": "0x0",
+      "input": "0xfa461e33ffffffffffffffffffffffffffffffffffffffffffffffffffffffffde2caf7800000000000000000000000000000000000000000000000000000000000cf38f00000000000000000000000000000000000000000000000000000000000000600000000000000000000000000000000000000000000000000000000000000020000000000000000000000000cbb7c0000ab88b473b1f5afd9ef808440eed33bf",
+      "decodedInput": [
+        {
+          "value": "-567496840",
+          "type": "int256",
+          "name": "amount0Delta",
+          "indexed": false
+        },
+        {
+          "value": "848783",
+          "type": "int256",
+          "name": "amount1Delta",
+          "indexed": false
+        },
+        {
+          "value": "0x000000000000000000000000cbb7c0000ab88b473b1f5afd9ef808440eed33bf",
+          "type": "bytes",
+          "name": "data",
+          "indexed": false
+        }
+      ],
+      "output": "0x",
+      "subtraces": 1,
+      "traceAddress": [
+        0,
+        0,
+        0,
+        4
+      ]
+    },
+    {
+      "type": "DELEGATECALL",
+      "from": "0x278d858f05b94576c1e6f73285886876ff6ef8d2",
+      "to": "0x4665c68f89ef352abdbc3c7e317bcd608db51053",
+      "gas": "0x4f24f",
+      "gasUsed": "0x5809",
+      "input": "0xfa461e33ffffffffffffffffffffffffffffffffffffffffffffffffffffffffde2caf7800000000000000000000000000000000000000000000000000000000000cf38f00000000000000000000000000000000000000000000000000000000000000600000000000000000000000000000000000000000000000000000000000000020000000000000000000000000cbb7c0000ab88b473b1f5afd9ef808440eed33bf",
+      "decodedInput": [
+        {
+          "value": "-567496840",
+          "type": "int256",
+          "name": "amount0Delta",
+          "indexed": false
+        },
+        {
+          "value": "848783",
+          "type": "int256",
+          "name": "amount1Delta",
+          "indexed": false
+        },
+        {
+          "value": "0x000000000000000000000000cbb7c0000ab88b473b1f5afd9ef808440eed33bf",
+          "type": "bytes",
+          "name": "data",
+          "indexed": false
+        }
+      ],
+      "output": "0x",
+      "subtraces": 1,
+      "traceAddress": [
+        0,
+        0,
+        0,
+        4,
+        0
+      ]
+    },
+    {
+      "type": "CALL",
+      "from": "0x278d858f05b94576c1e6f73285886876ff6ef8d2",
+      "to": "0xcbb7c0000ab88b473b1f5afd9ef808440eed33bf",
+      "gas": "0x4d955",
+      "gasUsed": "0x480a",
+      "value": "0x0",
+      "input": "0xa9059cbb0000000000000000000000003e66e55e97ce60096f74b7c475e8249f2d31a9fb00000000000000000000000000000000000000000000000000000000000cf38f",
+      "decodedInput": [
+        {
+          "value": "0x3e66e55e97ce60096f74b7c475e8249f2d31a9fb",
+          "type": "address",
+          "name": "recipient",
+          "indexed": false
+        },
+        {
+          "value": "848783",
+          "type": "uint256",
+          "name": "amount",
+          "indexed": false
+        }
+      ],
+      "output": "0x0000000000000000000000000000000000000000000000000000000000000001",
+      "decodedOutput": [
+        {
+          "value": true,
+          "type": "bool",
+          "indexed": false
+        }
+      ],
+      "subtraces": 1,
+      "traceAddress": [
+        0,
+        0,
+        0,
+        4,
+        0,
+        0
+      ]
+    },
+    {
+      "type": "DELEGATECALL",
+      "from": "0xcbb7c0000ab88b473b1f5afd9ef808440eed33bf",
+      "to": "0x7458bfdc30034eb860b265e6068121d18fa5aa72",
+      "gas": "0x4c345",
+      "gasUsed": "0x452b",
+      "input": "0xa9059cbb0000000000000000000000003e66e55e97ce60096f74b7c475e8249f2d31a9fb00000000000000000000000000000000000000000000000000000000000cf38f",
+      "decodedInput": [
+        {
+          "value": "0x3e66e55e97ce60096f74b7c475e8249f2d31a9fb",
+          "type": "address",
+          "name": "to",
+          "indexed": false
+        },
+        {
+          "value": "848783",
+          "type": "uint256",
+          "name": "value",
+          "indexed": false
+        }
+      ],
+      "method": "transfer",
+      "output": "0x0000000000000000000000000000000000000000000000000000000000000001",
+      "decodedOutput": [
+        {
+          "value": true,
+          "type": "bool",
+          "indexed": false
+        }
+      ],
+      "subtraces": 0,
+      "traceAddress": [
+        0,
+        0,
+        0,
+        4,
+        0,
+        0,
+        0
+      ]
+    },
+    {
+      "type": "STATICCALL",
+      "from": "0x3e66e55e97ce60096f74b7c475e8249f2d31a9fb",
+      "to": "0xcbb7c0000ab88b473b1f5afd9ef808440eed33bf",
+      "gas": "0x4acc4",
+      "gasUsed": "0x505",
+      "input": "0x70a082310000000000000000000000003e66e55e97ce60096f74b7c475e8249f2d31a9fb",
+      "decodedInput": [
+        {
+          "value": "0x3e66e55e97ce60096f74b7c475e8249f2d31a9fb",
+          "type": "address",
+          "name": "account",
+          "indexed": false
+        }
+      ],
+      "output": "0x00000000000000000000000000000000000000000000000000000000bbf62287",
+      "decodedOutput": [
+        {
+          "value": "3153470087",
+          "type": "uint256",
+          "indexed": false
+        }
+      ],
+      "subtraces": 1,
+      "traceAddress": [
+        0,
+        0,
+        0,
+        5
+      ]
+    },
+    {
+      "type": "DELEGATECALL",
+      "from": "0xcbb7c0000ab88b473b1f5afd9ef808440eed33bf",
+      "to": "0x7458bfdc30034eb860b265e6068121d18fa5aa72",
+      "gas": "0x49769",
+      "gasUsed": "0x229",
+      "input": "0x70a082310000000000000000000000003e66e55e97ce60096f74b7c475e8249f2d31a9fb",
+      "decodedInput": [
+        {
+          "value": "0x3e66e55e97ce60096f74b7c475e8249f2d31a9fb",
+          "type": "address",
+          "name": "account",
+          "indexed": false
+        }
+      ],
+      "method": "balanceOf",
+      "output": "0x00000000000000000000000000000000000000000000000000000000bbf62287",
+      "decodedOutput": [
+        {
+          "value": "3153470087",
+          "type": "uint256",
+          "indexed": false
+        }
+      ],
+      "subtraces": 0,
+      "traceAddress": [
+        0,
+        0,
+        0,
+        5,
+        0
+      ]
+    }
+  ],
+  "assetChanges": [
+    {
+      "assetInfo": {
+        "standard": "ERC20",
+        "type": "Fungible",
+        "contractAddress": "0x833589fcd6edb6e08f4c7c32d4f71b54bda02913",
+        "symbol": "usdc",
+        "name": "USDC",
+        "logo": "https://coin-images.coingecko.com/coins/images/6319/large/USDC.png?1769615602",
+        "decimals": 6,
+        "dollarValue": "0.9999989867210388"
+      },
+      "type": "Transfer",
+      "from": "0x3e66e55e97ce60096f74b7c475e8249f2d31a9fb",
+      "to": "0x278d858f05b94576c1e6f73285886876ff6ef8d2",
+      "rawAmount": "0x21d35088",
+      "amount": "567.49684",
+      "dollarValue": "567.49626496739149095"
+    },
+    {
+      "assetInfo": {
+        "standard": "ERC20",
+        "type": "Fungible",
+        "contractAddress": "0xcbb7c0000ab88b473b1f5afd9ef808440eed33bf",
+        "symbol": "cbbtc",
+        "name": "Coinbase Wrapped BTC",
+        "logo": "https://coin-images.coingecko.com/coins/images/40143/large/cbbtc.webp?1726136727",
+        "decimals": 8,
+        "dollarValue": "76318"
+      },
+      "type": "Transfer",
+      "from": "0x278d858f05b94576c1e6f73285886876ff6ef8d2",
+      "to": "0x3e66e55e97ce60096f74b7c475e8249f2d31a9fb",
+      "rawAmount": "0xcf38f",
+      "amount": "0.00848783",
+      "dollarValue": "647.77420994000000004"
+    }
+  ],
+  "balanceChanges": [
+    {
+      "address": "0x278d858f05b94576c1e6f73285886876ff6ef8d2",
+      "dollarValue": "-80.27794497260850909",
+      "transfers": [
+        0,
+        1
+      ]
+    },
+    {
+      "address": "0x3e66e55e97ce60096f74b7c475e8249f2d31a9fb",
+      "dollarValue": "80.27794497260850909",
+      "transfers": [
+        0,
+        1
+      ]
+    }
+  ],
+  "stateChanges": [
+    {
+      "address": "0x078afcb754c54ec5608246e46dd41616041c9822",
+      "nonce": {
+        "previousValue": "0x7437",
+        "newValue": "0x7438"
+      },
+      "balance": {
+        "previousValue": "0xb8080b837a7336",
+        "newValue": "0xb803e7f39a4432"
+      }
+    },
+    {
+      "address": "0x3e66e55e97ce60096f74b7c475e8249f2d31a9fb",
+      "storage": [
+        {
+          "slot": "0x0000000000000000000000000000000000000000000000000000000000000006",
+          "previousValue": "0x00000103840384002aff01dc000000000000000009e5fe0a924181eaa2dc16e7",
+          "newValue": "0x00000103840384002bff01dd000000000000000009e60e8a1de5a947f96f02f4"
+        },
+        {
+          "slot": "0x0000000000000000000000000000000000000000000000000000000000000008",
+          "previousValue": "0x000000000000000000000000000000000021f0d1ae5535a9764d735ddf9d8949",
+          "newValue": "0x000000000000000000000000000000000021f0d329de27e756f6ea2df81eadf2"
+        },
+        {
+          "slot": "0x000000000000000000000000000000000000000000000000000000000000000a",
+          "previousValue": "0x000000000000000000000000001c2a8900000000000000000000000047639fb6",
+          "newValue": "0x000000000000000000000000001c2b6000000000000000000000000047639fb6"
+        },
+        {
+          "slot": "0x000000000000000000000000000000000000000000000000000000000000003f",
+          "previousValue": "0x0100000000004716636514143cda8011e1547dd6cafffe18ef79cd5a69a063bf",
+          "newValue": "0x0100000000004716835b10638aa20a7205880bb783fffe18d67b36b069a07ce9"
+        }
+      ]
+    },
+    {
+      "address": "0x4200000000000000000000000000000000000011",
+      "balance": {
+        "previousValue": "0xe757863a9e2c2772e",
+        "newValue": "0xe757863a9e3806d74"
+      }
+    },
+    {
+      "address": "0x4200000000000000000000000000000000000019",
+      "balance": {
+        "previousValue": "0x490bac202e031a90e",
+        "newValue": "0x490bac6266f53e1cc"
+      }
+    },
+    {
+      "address": "0x420000000000000000000000000000000000001a",
+      "balance": {
+        "previousValue": "0x1a9117b2f27b5592",
+        "newValue": "0x1a9117b42214f6b8"
+      }
+    },
+    {
+      "address": "0x833589fcd6edb6e08f4c7c32d4f71b54bda02913",
+      "storage": [
+        {
+          "slot": "0x18ea86e1846716318a13e3dbc795b2e442d8d0b121ebb7a88202642a1b371474",
+          "previousValue": "0x0000000000000000000000000000000000000000000000000000007d1647039a",
+          "newValue": "0x0000000000000000000000000000000000000000000000000000007d381a5422"
+        },
+        {
+          "slot": "0x5133512dafa30d5877ca46b06ed66e50eb2ea599d77e81df7bb88fb23edd2da6",
+          "previousValue": "0x0000000000000000000000000000000000000000000000000000014f10272815",
+          "newValue": "0x0000000000000000000000000000000000000000000000000000014eee53d78d"
+        }
+      ]
+    },
+    {
+      "address": "0xcbb7c0000ab88b473b1f5afd9ef808440eed33bf",
+      "storage": [
+        {
+          "slot": "0x18ea86e1846716318a13e3dbc795b2e442d8d0b121ebb7a88202642a1b371474",
+          "previousValue": "0x00000000000000000000000000000000000000000000000000000000094baa1f",
+          "newValue": "0x00000000000000000000000000000000000000000000000000000000093eb690"
+        },
+        {
+          "slot": "0x5133512dafa30d5877ca46b06ed66e50eb2ea599d77e81df7bb88fb23edd2da6",
+          "previousValue": "0x00000000000000000000000000000000000000000000000000000000bbe92ef8",
+          "newValue": "0x00000000000000000000000000000000000000000000000000000000bbf62287"
+        }
+      ]
+    }
+  ]
+}

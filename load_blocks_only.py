@@ -1,7 +1,6 @@
 import os
 import sys
 import logging
-import psycopg2
 import time
 import threading
 from psycopg2 import extras, pool
@@ -146,8 +145,9 @@ def fetch_and_store_block_batch(block_numbers):
                     rpc_manager.mark_unhealthy(w3, reason="Timeout", duration=120)
                 elif "not found" in error_msg or "-32014" in error_msg:
                     logger.warning(f"Some blocks in batch {block_numbers} not found on {rpc_url}.")
-                elif any(x in error_msg for x in ["401", "402", "429", "unauthorized", "rate limit", "too many requests"]):
-                    rpc_manager.mark_unhealthy(w3, reason="Auth/RateLimit", duration=600)
+                elif any(x in error_msg for x in ["401", "402", "429", "-32003", "unauthorized", "rate limit",
+                                                  "too many requests"]):
+                    rpc_manager.mark_unhealthy(w3, reason="Auth/RateLimit", duration=10)
                 else:
                     logger.warning(f"Attempt {attempt+1} failed for batch starting at {block_numbers[0]} on {rpc_url}: {e}")
                 
@@ -166,7 +166,8 @@ def fetch_and_store_block_batch(block_numbers):
         all_block_data = []
         
         for block in blocks:
-            if not block: continue
+            if not block: 
+                continue
             
             timestamp = datetime.fromtimestamp(block['timestamp'])
             all_block_data.append((block['number'], block['hash'].hex(), timestamp))
@@ -180,6 +181,10 @@ def fetch_and_store_block_batch(block_numbers):
                         input_data = ''
                         
                     method_id = input_data[:10] if input_data and len(input_data) >= 10 else input_data
+                    
+                    # Truncate input_data to 32 chars MAX
+                    if len(input_data) > 32:
+                        input_data = input_data[:32]
                     
                     tx_hash = tx['hash']
                     if isinstance(tx_hash, bytes):

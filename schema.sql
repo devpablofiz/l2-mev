@@ -38,3 +38,17 @@ CREATE TABLE IF NOT EXISTS address_tags (
     source_method_id TEXT REFERENCES method_tags(method_id),
     description TEXT
 );
+
+-- Precomputed method frequencies for faster UI/classifier access
+CREATE MATERIALIZED VIEW IF NOT EXISTS method_frequencies AS
+SELECT 
+    method_id,
+    COUNT(*) AS usage_count,
+    MIN(tx_hash) AS sample_tx_hash,
+    MAX(block_number) AS last_seen_block
+FROM transactions
+WHERE method_id IS NOT NULL AND method_id <> '0x'
+GROUP BY method_id;
+
+CREATE UNIQUE INDEX IF NOT EXISTS method_frequencies_method_id_idx ON method_frequencies (method_id);
+CREATE INDEX IF NOT EXISTS method_frequencies_usage_count_idx ON method_frequencies (usage_count DESC);
