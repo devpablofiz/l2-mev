@@ -27,6 +27,7 @@ class ArbitrageStrategy(ClassificationStrategy):
             
         slot0_pools = set()
         get_reserves_pools = set()
+        v4_pools = set()
         
         for step in trace_steps:
             step_input = step.get("input", "")
@@ -47,11 +48,16 @@ class ArbitrageStrategy(ClassificationStrategy):
             # Check for Uniswap V2 getReserves()
             elif step.get("method") == "getReserves":
                 get_reserves_pools.add(to_address.lower())
+            
+            # Check for V4 style arb pools (extsload0)
+            elif step.get("method") == "extsload0":
+                v4_pools.add(to_address.lower())
         
         v3_count = len(slot0_pools)
         v2_count = len(get_reserves_pools)
-        print(f"[Arb] v3_pools={v3_count} v2_pools={v2_count}")
-        heur_positive = v3_count >= 2 or v2_count >= 2 or (v3_count + v2_count) >= 2
+        v4_count = len(v4_pools)
+        print(f"[Arb] v3_pools={v3_count} v2_pools={v2_count} v4_pools={v4_count}")
+        heur_positive = v3_count >= 2 or v2_count >= 2 or v4_count >= 2 or (v3_count + v2_count + v4_count) >= 2
         if heur_positive:
             candidates = []
             if tx_to:
@@ -62,6 +68,9 @@ class ArbitrageStrategy(ClassificationStrategy):
             for addr in list(get_reserves_pools)[:5]:
                 if addr not in candidates:
                     candidates.append(addr)
+            for addr in list(v4_pools)[:5]:
+                if addr not in candidates:
+                    candidates.append(addr)
             print(f"[Arb] candidates={candidates}")
             for addr in candidates[:5]:
                 count = dune_utils.get_multi_swap_tx_count(addr, blockchain="base")
@@ -69,16 +78,20 @@ class ArbitrageStrategy(ClassificationStrategy):
                 if count is None:
                     continue
                 if count > 0:
-                    if v3_count >= 2 and v2_count == 0:
+                    if v3_count >= 2 and v2_count == 0 and v4_count == 0:
                         return "MEV Bot: Arbitrage", f"slot0 checks on {v3_count} pools; Dune shows {count} multi-swaps for {addr}"
-                    if v2_count >= 2 and v3_count == 0:
+                    if v2_count >= 2 and v3_count == 0 and v4_count == 0:
                         return "MEV Bot: Arbitrage", f"getReserves checks on {v2_count} pools; Dune shows {count} multi-swaps for {addr}"
-                    return "MEV Bot: Arbitrage", f"Checked {v3_count} V3 and {v2_count} V2 pools; Dune shows {count} multi-swaps for {addr}"
-            if v3_count >= 2 and v2_count == 0:
+                    if v4_count >= 2 and v3_count == 0 and v2_count == 0:
+                        return "MEV Bot: Arbitrage", f"extsload0 checks on {v4_count} pools; Dune shows {count} multi-swaps for {addr}"
+                    return "MEV Bot: Arbitrage", f"Checked {v3_count} V3, {v2_count} V2 and {v4_count} V4 pools; Dune shows {count} multi-swaps for {addr}"
+            if v3_count >= 2 and v2_count == 0 and v4_count == 0:
                 return "MEV Bot: Arbitrage", f"Checked {v3_count} V3 type pools via slot0()"
-            if v2_count >= 2 and v3_count == 0:
+            if v2_count >= 2 and v3_count == 0 and v4_count == 0:
                 return "MEV Bot: Arbitrage", f"Checked {v2_count} V2 type pools via getReserves()"
-            return "MEV Bot: Arbitrage", f"Checked {v3_count} V3 and {v2_count} V2 pools"
+            if v4_count >= 2 and v3_count == 0 and v2_count == 0:
+                return "MEV Bot: Arbitrage", f"Checked {v4_count} V4 type pools via extsload0()"
+            return "MEV Bot: Arbitrage", f"Checked {v3_count} V3, {v2_count} V2 and {v4_count} V4 pools"
             
         return None
     
@@ -213,13 +226,64 @@ class LiquidationStrategy(ClassificationStrategy):
             return "MEV Bot: Liquidation", f"{tx_to} has {count} liquidation txs on Dune"
         return None
 
+class IncentiveFarmingStrategy(ClassificationStrategy):
+    def classify(self, trace: Dict[str, Any]) -> Optional[Tuple[str, str]]:
+        steps = trace.get("trace", [])
+        if not steps:
+            return None
+        inc = 0
+        dec = 0
+        period_info = 0
+        for s in steps:
+            m = s.get("method")
+            if m == "increaseLiquidity":
+                inc += 1
+            elif m == "decreaseLiquidity":
+                dec += 1
+            elif m == "getLatestPeriodInfo":
+                period_info += 1
+        if inc > 0 or dec > 0:
+            return "Incentive Farming / Liquidity Manager", f"increaseLiquidity={inc} decreaseLiquidity={dec} getLatestPeriodInfo={period_info}"
+        elif period_info > 0:
+            return "Incentive Farming / Liquidity Mining", f"getLatestPeriodInfo={period_info}"
+        return None
+    
+class AccountAbstractionStrategy(ClassificationStrategy):
+    """Classifies as Account Abstraction if handleOps or transferWithAuthorization is present."""
+    def classify(self, trace: Dict[str, Any]) -> Optional[Tuple[str, str]]:
+        trace_steps = trace.get("trace", [])
+        if not trace_steps:
+            return None
+            
+        for step in trace_steps:
+            method = step.get("method")
+            if method in ("handleOps", "transferWithAuthorization"):
+                return "Account Abstraction", f"Detected {method} in transaction trace"
+        return None
+
+class MulticallStrategy(ClassificationStrategy):
+    """Classifies as Multicall if any method in the trace starts with 'multicall'."""
+    def classify(self, trace: Dict[str, Any]) -> Optional[Tuple[str, str]]:
+        trace_steps = trace.get("trace", [])
+        if not trace_steps:
+            return None
+        
+        for step in trace_steps:
+            method = step.get("method")
+            if method and isinstance(method, str) and method.lower().startswith("multicall"):
+                return "Multicall", f"Detected method starting with '{method}' in trace"
+        return None
+
 class MethodClassifier:
     def __init__(self):
         self.strategies: List[ClassificationStrategy] = [
+            MulticallStrategy(),
+            IncentiveFarmingStrategy(),
             OracleLeveragingLiquidationStrategy(),
             OracleLeveragingArbitrageStrategy(),
             LiquidationStrategy(),
             ArbitrageStrategy(),
+            AccountAbstractionStrategy(),
             # LogSignatureStrategy(), # Disabled as requested
             # Add more strategies here
         ]
@@ -320,6 +384,12 @@ class MethodClassifier:
         
         if selector in {"0x04e45aaf"}:
             return "Uniswap V3 Swap", "exactInputSingle"
+        
+        # Fast-path for common Account Abstraction methods
+        if selector == "0x1fad948d":
+            return "Account Abstraction", "handleOps selector"
+        if selector == "0xe3ee1edc":
+            return "Account Abstraction", "transferWithAuthorization selector"
             
         for strategy in self.strategies:
             result = strategy.classify(trace)
